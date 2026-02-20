@@ -48,3 +48,4 @@ npm run build
 
 - [PRODUCT.md](./PRODUCT.md) — product vision, MVP features, roadmap
 - [TECH.md](./TECH.md) — architecture, stack, hosting, technical decisions
+
