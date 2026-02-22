@@ -16,8 +16,8 @@ No test runner or linter is configured yet.
 **Celestia** — an AI-powered personal Spanish tutor web app. Combines real tutor personalization with interactive Duolingo/Skyeng-style exercises. Spanish from Spain (Castellano), not Latin American. Interface language: Russian (MVP).
 
 Key docs:
-- `PRODUCT.md` — product vision, problem statement, MVP features (assessment, personal program, interactive exercises, chat with Celestia, gamification), and phased roadmap
-- `TECH.md` — architecture, tech stack, hosting, and key technical decisions
+- `docs/PRODUCT.md` — product vision, problem statement, MVP features (assessment, personal program, interactive exercises, chat with Celestia, gamification), and phased roadmap
+- `docs/TECH.md` — architecture, tech stack, hosting, and key technical decisions
 - `docs/grammar/` — complete A1-C2 grammar topic tree based on Instituto Cervantes Plan Curricular, used as reference for assessment and lesson generation
 
 ## Current Codebase
@@ -29,4 +29,4 @@ Key docs:
 
 ## Planned Architecture (Docs)
 
-- `TECH.md` describes an intended Turborepo setup (`apps/web`, `apps/api`, `packages/shared`) with Next.js + NestJS + Prisma/PostgreSQL, Claude API, and Google OAuth.
+- `docs/TECH.md` describes an intended Turborepo setup (`apps/web`, `apps/api`, `packages/shared`) with Next.js + NestJS + Prisma/PostgreSQL, Claude API, and Google OAuth.
