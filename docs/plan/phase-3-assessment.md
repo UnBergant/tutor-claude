@@ -1,0 +1,17 @@
+# Phase 3: Assessment Engine
+
+## Goal
+Onboarding + level assessment — key feature for personalization.
+
+## Steps
+
+1. **Onboarding UI** — stepper: Welcome → Experience → Goal → Assessment
+2. **Assessment Flow** — store, components, dynamic difficulty via AI
+3. **Backend Assessment module** — question generation via Claude API, gap analysis, level mapping
+4. **Claude API integration** — AiService wrapper, structured output, Castellano system prompt
+5. **Results** — visualization of strengths/weaknesses, first module proposals, save to UserProfile
+
+## Verification
+- User completes onboarding → assessment → sees results
+- AI generates adequate questions per level
+- Results saved in DB
