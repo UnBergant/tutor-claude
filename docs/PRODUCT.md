@@ -30,7 +30,7 @@ A personalized AI language tutor that combines the best of both worlds: the adap
 - Role: personal Spanish tutor
 - Personality: friendly, encouraging, uses popular Spanish phrases and expressions to teach the user to sound more native
 - Language style: teaches Castellano (Spain Spanish) — vosotros, pronunciation, vocabulary, and cultural context from Spain
-- Interface language: Russian (MVP), English (future)
+- Interface language: English (MVP), Russian (post-MVP)
 - Target language: Spanish (MVP)
 
 ## MVP Features
@@ -147,7 +147,7 @@ Post-MVP validation:
 - Review student results and progress
 
 ### Expanded Content
-- English interface language
+- Russian interface language
 - Listening exercises
 - Speaking exercises (voice input)
 - Public leaderboard
