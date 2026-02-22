@@ -1,63 +1,70 @@
 # Architecture
 
-## Monorepo (Turborepo)
+## Single Next.js Application
+
+No separate backend — Next.js handles both frontend and API via Server Actions and Route Handlers.
 
 ```
-tutor-claude/
-├── apps/
-│   ├── web/          # Next.js (App Router) — frontend
-│   └── api/          # NestJS — backend API
-├── packages/
-│   └── shared/       # Shared types, constants, Zod schemas
-├── turbo.json        # Pipeline config
-├── biome.json        # Linter/formatter
-└── package.json      # Workspaces root
+┌──────────────────────────────────────────┐
+│            Next.js (Vercel)              │
+│                                          │
+│  ┌─────────┐  ┌──────────────────────┐   │
+│  │  React   │  │  Server Actions      │   │
+│  │  Client  │──│  Route Handlers      │───┼──► PostgreSQL
+│  │          │  │  Server Components   │   │
+│  └─────────┘  └──────────┬───────────┘   │
+│                          │               │
+└──────────────────────────┼───────────────┘
+                           │
+                     ┌─────▼──────┐
+                     │  Claude    │
+                     │  API       │
+                     └────────────┘
 ```
 
-## Frontend Structure (Feature-Sliced Design)
+## Server-Side Architecture
+
+- **Server Actions** — mutations (submit answer, save progress, update profile)
+- **Route Handlers** — SSE streaming (chat), webhooks, Auth.js
+- **React Server Components** — data fetching, initial page renders
+
+## Project Structure (FSD-lite)
 
 ```
-apps/web/src/
-├── app/              # Next.js App Router (routes, layouts)
-├── shared/           # Reusable across all features
-│   ├── ui/           # UI primitives (Button, Input, Card, Modal...)
-│   ├── lib/          # Utilities, API client, helpers
-│   ├── tokens/       # CSS custom properties (design tokens)
-│   └── hooks/        # Shared React hooks
-├── features/         # Feature modules (self-contained)
+src/
+├── app/                    # Next.js App Router (routes, layouts)
+│   ├── (auth)/             # Auth routes (login)
+│   ├── (app)/              # Protected app routes
+│   │   ├── assessment/
+│   │   ├── lesson/
+│   │   ├── chat/
+│   │   └── vocabulary/
+│   └── api/                # Route Handlers
+│       └── chat/route.ts   # SSE streaming
+├── modules/                # Feature modules (FSD-lite)
 │   ├── assessment/
+│   │   ├── components/     # UI components
+│   │   ├── actions.ts      # Server Actions
+│   │   ├── store.ts        # Zustand store (complex state)
+│   │   └── hooks.ts        # React hooks + TanStack Query
 │   ├── exercise/
-│   ├── lesson/
 │   ├── chat/
-│   ├── vocabulary/
+│   ├── lesson/
 │   ├── onboarding/
-│   ├── home/
-│   ├── mistakes/
+│   ├── vocabulary/
 │   └── progress/
-└── widgets/          # Composite UI blocks (sidebar, navbar)
-```
-
-## Backend Structure (NestJS Modules)
-
-```
-apps/api/src/
-├── auth/             # Google OAuth, JWT, guards
-├── users/            # User management
-├── assessment/       # Assessment flow
-├── curriculum/       # Curriculum generation
-├── exercises/        # Exercise generation & evaluation
-├── lessons/          # Lesson management
-├── chat/             # Chat with Celestia
-├── vocabulary/       # Personal dictionary
-├── spaced-repetition/# Review scheduling
-├── ai/               # Claude API integration
-├── prisma/           # Prisma service
-└── common/           # Shared decorators, pipes, filters
+└── shared/
+    ├── ui/                 # shadcn/ui components (Button, Card, Dialog...)
+    ├── lib/                # Prisma client, AI client, auth config, rate limiter
+    ├── hooks/              # Shared React hooks
+    └── types/              # TypeScript types
 ```
 
 ## Key Principles
 
+- **FSD-lite**: 3 layers — `app/` (routes), `modules/` (features), `shared/` (reusables)
+- **Import rule**: `modules/` import from `shared/`, never from each other
+- **Colocation**: Server Actions live inside their feature module
 - **Separation of Concerns**: Presentation / State / Logic
-- **SOLID**: Single responsibility, dependency inversion via interfaces
-- **Container/Presentational**: Containers connect stores, pass data via props to pure components
-- **Design Tokens**: All visual values via CSS custom properties
+- **Container/Presentational**: Containers connect stores, pass data via props
+- **Mobile-first**: Tailwind mobile-first, touch-friendly (min 44px targets)

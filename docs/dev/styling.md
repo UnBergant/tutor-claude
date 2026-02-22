@@ -1,60 +1,57 @@
-# Styling — CSS Modules + Design Tokens
+# Styling — Tailwind CSS + shadcn/ui
 
 ## Approach
 
-- **CSS Modules** — scoped styles per component (`.module.css`)
-- **Design Tokens** — CSS custom properties in `shared/tokens/`
-- **No CSS-in-JS** — better performance, native CSS features
-- **Data attributes** for variants (`data-variant`, `data-size`) instead of className composition
+- **Tailwind CSS** — utility-first, mobile-first responsive design
+- **shadcn/ui** — copied Radix-based components for base UI (Button, Card, Dialog, Select, etc.)
+- **Custom components** — interactive exercise UI built with Tailwind + custom logic
+- **CSS variables** — design tokens via Tailwind theme + CSS custom properties
 
-## Token Files
+## Two UI Layers
 
-| File | Contents |
-|------|----------|
-| `colors.css` | Primary, secondary, neutral, semantic colors |
-| `typography.css` | Font families, sizes, line-heights, weights |
-| `spacing.css` | 4px scale: `--space-1` (4px) through `--space-16` (64px) |
-| `radius.css` | Border radius values |
-| `shadows.css` | Box shadow definitions |
-| `breakpoints.css` | Media query breakpoints |
+### Base UI (shadcn/ui)
+Standard interface elements — navigation, forms, dashboards, settings:
+- Button, Input, Card, Dialog, Select, Tabs, Toast, Badge, Progress, Avatar
+- Installed via `npx shadcn@latest add <component>`
+- Source code copied to `src/shared/ui/` — fully owned and customizable
+
+### Custom Exercise UI
+Interactive learning components — unique to the product:
+- GapFill (insert word into sentence)
+- MatchPairs (drag & drop pair matching)
+- ReorderWords (drag words to build sentence)
+- FreeWriting (text input + AI evaluation)
+- ReadingComprehension (text + questions)
+
+These use Tailwind for styling but have fully custom logic and interactions.
+
+## Mobile-First
+
+- Tailwind is mobile-first by default (no prefix = mobile, `md:` = tablet, `lg:` = desktop)
+- Touch targets: `min-h-[44px]` minimum tap size
+- `touch-manipulation` — remove 300ms tap delay
+- `active:scale-95` — visual feedback on press
+- Drag & drop via `@dnd-kit/core` — works with touch and mouse
 
 ## Component Pattern
 
 ```tsx
-// Button/Button.tsx
-import styles from './Button.module.css'
+// Custom exercise component using Tailwind + shadcn Button
+import { Button } from '@/shared/ui/button'
 
-interface ButtonProps {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost'
-  size?: 'sm' | 'md' | 'lg'
-  children: React.ReactNode
+export function GapFill({ sentence, options, onResult }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-lg">...</p>
+      <div className="flex flex-wrap gap-2">
+        {options.map(opt => (
+          <button key={opt} className="px-4 py-2 rounded-full border ...">
+            {opt}
+          </button>
+        ))}
+      </div>
+      <Button size="lg" className="w-full">Проверить</Button>
+    </div>
+  )
 }
-
-export const Button = ({ variant = 'primary', size = 'md', ...props }: ButtonProps) => (
-  <button className={styles.root} data-variant={variant} data-size={size} {...props} />
-)
 ```
-
-```css
-/* Button/Button.module.css */
-.root {
-  font-family: var(--font-body);
-  border-radius: var(--radius-md);
-  transition: all 0.15s ease;
-}
-.root[data-variant='primary'] {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-}
-.root[data-size='sm'] { padding: var(--space-1) var(--space-2); }
-```
-
-## Headless UI Primitives
-
-Complex interactive components use **Radix UI** for accessible behavior:
-- Dialog → Modal
-- Select → Select dropdown
-- Tabs → Tab panels
-- Toast → Notifications
-
-Radix provides behavior + a11y; CSS Modules provide styling.

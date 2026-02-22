@@ -1,42 +1,77 @@
-# API Design
+# API Design — Server Actions + Route Handlers
 
-## NestJS Module Structure
+## Architecture
 
-Each module follows the pattern:
-- `*.controller.ts` — HTTP endpoints, validation
-- `*.service.ts` — business logic
-- `*.module.ts` — DI wiring
-- `dto/` — request/response DTOs with class-validator
+No separate API server. Next.js handles all server-side logic:
 
-## REST Endpoints (Planned)
+| Mechanism | Use Case | Example |
+|---|---|---|
+| Server Actions | Mutations (create, update, delete) | Submit answer, save progress, update profile |
+| Route Handlers | Streaming, webhooks, external integrations | Chat SSE, Auth.js callbacks |
+| Server Components | Data fetching for page renders | Lesson page, dashboard |
 
-### Auth
-- `POST /auth/google` — initiate Google OAuth
-- `POST /auth/refresh` — refresh JWT tokens
-- `GET /auth/me` — current user profile
+## Server Actions (Mutations)
 
-### Assessment
-- `POST /assessment/start` — begin assessment
-- `POST /assessment/answer` — submit answer, get next question
-- `POST /assessment/complete` — finalize and get results
+Colocated with their feature module:
 
-### Lessons
-- `GET /lessons?moduleId=` — list lessons for module
-- `GET /lessons/:id` — lesson detail with blocks
-- `POST /lessons/:id/progress` — update lesson progress
+```ts
+// modules/exercise/actions.ts
+"use server"
 
-### Exercises
-- `POST /exercises/generate` — generate exercises for topic
-- `POST /exercises/:id/attempt` — submit exercise answer
+import { prisma } from '@/shared/lib/prisma'
+import { auth } from '@/shared/lib/auth'
 
-### Chat
-- `POST /chat/message` — send message (SSE response)
-- `GET /chat/history` — conversation summary
+export async function submitAnswer(exerciseId: string, answer: string) {
+  const session = await auth()
+  if (!session) throw new Error('Unauthorized')
 
-### Curriculum
-- `GET /curriculum/modules` — suggested modules
-- `POST /curriculum/override` — user topic preference
+  const exercise = await prisma.exercise.findUnique({ where: { id: exerciseId } })
+  const isCorrect = exercise.correctAnswer === answer
 
-### Vocabulary
-- `GET /vocabulary` — personal dictionary
-- `POST /vocabulary/review` — flashcard result
+  await prisma.exerciseAttempt.create({
+    data: { exerciseId, answer, correct: isCorrect, userId: session.user.id }
+  })
+
+  return { correct: isCorrect, explanation: exercise.explanation }
+}
+```
+
+## Route Handlers (Streaming & Integrations)
+
+```ts
+// app/api/chat/route.ts
+export async function POST(request: Request) {
+  const session = await auth()
+  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { message } = await request.json()
+  const stream = await anthropic.messages.create({ ..., stream: true })
+
+  return new Response(stream.toReadableStream(), {
+    headers: { 'Content-Type': 'text/event-stream' },
+  })
+}
+```
+
+## Endpoints (Planned)
+
+### Server Actions
+- `submitAnswer(exerciseId, answer)` — check exercise answer
+- `startAssessment()` — begin assessment flow
+- `submitAssessmentAnswer(questionId, answer)` — submit + get next question
+- `completeAssessment()` — finalize and get results
+- `updateLessonProgress(lessonId, status, score)` — save lesson progress
+- `saveVocabularyReview(wordId, correct)` — flashcard result
+- `updateProfile(data)` — update user profile/preferences
+- `overrideCurriculum(topics)` — user topic preference
+
+### Route Handlers
+- `POST /api/chat` — chat message (SSE streaming response)
+- `GET /api/auth/[...nextauth]` — Auth.js routes
+- `POST /api/auth/[...nextauth]` — Auth.js routes
+
+### Server Components (Data Fetching)
+- Lesson page — fetch lesson with blocks
+- Dashboard — fetch user progress, suggested modules
+- Vocabulary — fetch personal dictionary
+- Assessment results — fetch strengths/weaknesses

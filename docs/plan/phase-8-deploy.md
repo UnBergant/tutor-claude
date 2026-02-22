@@ -5,13 +5,14 @@ Finalization, E2E tests, deployment.
 
 ## Steps
 
-1. **E2E tests (Playwright)** — full path: login → assessment → lesson → chat
-2. **Performance** — lazy loading, image optimization, API caching
-3. **Mobile-first polish** — mobile device checks, touch interactions
-4. **Deploy** — Vercel (web), Railway (api + PostgreSQL), env vars, CI/CD (GitHub Actions)
-5. **Update docs** — CLAUDE.md, AGENTS.md, README.md
+1. **E2E tests (Playwright)** — 3-5 critical flows: login → assessment → lesson → chat → vocabulary
+2. **Performance** — lazy loading, image optimization (Next.js Image), AI response caching
+3. **Mobile polish** — test on real devices, touch interactions, viewport handling
+4. **Deploy** — Vercel (full-stack Next.js), Vercel Postgres or Neon (PostgreSQL), environment variables
+5. **Update docs** — CLAUDE.md, README.md with production URLs and setup instructions
 
 ## Verification
 - E2E tests pass
 - App works on production URL
-- Mobile UI correct
+- Mobile UI correct on real devices
+- AI rate limits enforced in production

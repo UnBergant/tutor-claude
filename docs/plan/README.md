@@ -4,8 +4,8 @@
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 0 | [Monorepo Foundation & Tooling](phase-0-foundation.md) | ⏳ Pending |
-| 1 | [Design System & Shared UI](phase-1-design-system.md) | ⏳ Pending |
+| 0 | [Project Foundation & Tooling](phase-0-foundation.md) | ⏳ Pending |
+| 1 | [Design System & Base UI](phase-1-design-system.md) | ⏳ Pending |
 | 2 | [Auth & Database](phase-2-auth-db.md) | ⏳ Pending |
 | 3 | [Assessment Engine](phase-3-assessment.md) | ⏳ Pending |
 | 4 | [Exercise Engine](phase-4-exercises.md) | ⏳ Pending |

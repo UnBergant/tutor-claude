@@ -1,20 +1,18 @@
-# Phase 1: Design System & Shared UI
+# Phase 1: Design System & Base UI
 
 ## Goal
-Reusable UI component library + design tokens — foundation for all features.
+Complete set of themed UI components + design tokens. Foundation for all features.
 
 ## Steps
 
-1. **Design Tokens** — CSS custom properties: colors, typography, spacing (4px scale), radius, shadows, breakpoints
-2. **Global styles** — CSS reset, base typography, token imports
-3. **Shared UI Components** (apps/web/src/shared/ui/):
-   - Button (primary, secondary, outline, ghost × sm, md, lg)
-   - Input (text, password; default, focus, error, disabled)
-   - Card, Badge, ProgressBar, Avatar, Icon
-   - Modal (Radix Dialog), Select (Radix Select), Tabs (Radix Tabs), Toast (Radix Toast)
-4. **Component pattern** — CSS Modules + data-attributes for variants, design tokens for values
+1. **Design Tokens** — Tailwind theme config: colors, typography, spacing, radius, shadows
+2. **Global styles** — CSS reset via Tailwind base, custom font loading
+3. **shadcn/ui components** — install remaining needed components, customize theme
+4. **Layout components** — AppLayout (sidebar + content), AuthLayout, responsive navigation
+5. **Mobile-first verification** — all components work on 320px+ screens, touch-friendly
 
 ## Verification
-- All components render on test page `/dev/ui`
-- Changing CSS variables in `:root` instantly updates design
-- Unit tests for each component (render, props, a11y)
+- All base components render correctly
+- Changing Tailwind theme variables updates entire design
+- Layout works on mobile (320px) through desktop (1440px)
+- Touch targets minimum 44px

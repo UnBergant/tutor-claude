@@ -5,14 +5,19 @@ Library of interactive exercises — core of the learning process.
 
 ## Steps
 
-1. **Exercise Components** — GapFill, MultipleChoice, MatchPairs, ReorderWords, FreeWriting, ReadingComprehension
-2. **Exercise Engine** — store, useExercise hook, ExerciseContainer, factory by type
+1. **Exercise Components** — GapFill, MultipleChoice, MatchPairs, ReorderWords, FreeWriting, ReadingComprehension (custom Tailwind + touch-friendly)
+2. **Exercise Engine** — Zustand store, useExercise hook, ExerciseContainer, factory by type
 3. **Feedback System** — correct/incorrect animations, contextual hints, "retry topic", "report error"
-4. **Backend** — ExerciseGenerationService (Claude API), validation pipeline, ExerciseEvaluationService
-5. **Shared Types** — ExerciseType enum, Exercise, ExerciseContent, ExerciseAttempt, Zod schemas
+4. **Server Actions** — exercise generation via Claude API, validation pipeline, answer evaluation
+5. **Shared Types** — ExerciseType, Exercise, ExerciseContent, ExerciseAttempt types
+
+## Key Files
+- src/modules/exercise/components/ (6 exercise type components)
+- src/modules/exercise/store.ts, hooks.ts, actions.ts
 
 ## Verification
-- All 6 exercise types work
+- All 6 exercise types work on mobile and desktop
 - Answers validated correctly
-- Feedback displays
+- Feedback displays with animations
 - AI generates valid exercises
+- Touch interactions work (drag & drop on mobile)

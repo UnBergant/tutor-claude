@@ -1,26 +1,29 @@
-# Phase 0: Monorepo Foundation & Tooling
+# Phase 0: Project Foundation & Tooling
 
 ## Goal
-Convert from stub to working Turborepo monorepo with configured tooling.
+Set up Next.js project with all tooling configured.
 
 ## Steps
 
-1. **Turborepo init** — root package.json (workspaces), turbo.json pipeline (build, lint, test, dev), remove src/index.ts stub
-2. **Create packages** — apps/web (Next.js App Router), apps/api (NestJS), packages/shared (types, constants, utils)
-3. **Next.js setup** — App Router, TypeScript, path aliases, CSS Modules
-4. **NestJS setup** — TypeScript strict, modular structure (auth/, users/, lessons/, exercises/, chat/)
-5. **Shared package** — TypeScript types, constants, Zod schemas
-6. **Tooling** — Biome (lint/format), Vitest (tests), Husky + lint-staged (pre-commit), .nvmrc
-7. **Update docs** — TECH.md, CLAUDE.md, AGENTS.md
+1. **Next.js init** — App Router, TypeScript, Tailwind CSS
+2. **shadcn/ui** — install and configure, add base components (Button, Card, Input, Dialog, Select, Tabs, Toast, Badge, Progress, Avatar)
+3. **Project structure** — FSD-lite: `src/app/`, `src/modules/`, `src/shared/`
+4. **Prisma** — init schema, PostgreSQL connection
+5. **Tooling** — Biome (lint/format), Vitest, Playwright, Husky + lint-staged
+6. **Auth.js** — next-auth v5, Google provider, session management
+7. **.nvmrc** — pin Node version
+8. **Update docs** — CLAUDE.md + AGENTS.md with new structure and commands
 
 ## Key Files
-- turbo.json, root package.json
-- apps/web/package.json, apps/web/next.config.ts
-- apps/api/package.json, apps/api/nest-cli.json
-- packages/shared/package.json, packages/shared/tsconfig.json
+- package.json, next.config.ts, tailwind.config.ts
+- components.json (shadcn/ui)
+- prisma/schema.prisma
 - biome.json
+- src/app/layout.tsx, src/app/globals.css
 
 ## Verification
-- `npm run build` — all 3 packages build
-- `npm run dev` — web and api start in parallel
-- `npm run lint` — Biome checks entire monorepo
+- `npm run build` — project builds
+- `npm run dev` — app starts on localhost:3000
+- `npm run lint` — Biome checks pass
+- shadcn/ui components render on test page
+- Auth.js Google login works
