@@ -17,7 +17,7 @@ A personalized AI language tutor that combines the best of both worlds: the adap
 ## Core Concept
 
 - AI-powered level assessment that maps specific knowledge gaps (e.g., "knows Present Indicative, weak on Subjunctive")
-- Grammar curriculum skeleton based on Instituto Cervantes Plan Curricular (see `GRAMMAR_CURRICULUM.md`)
+- Grammar curriculum skeleton based on Instituto Cervantes Plan Curricular (see `docs/grammar/`)
 - Dynamic lesson generation based on assessment results, progress, and user interests
 - Personal curriculum that adapts after every session — mistakes shape future lessons
 - Interactive exercises (Duolingo/Skyeng style) generated around topics the user cares about
@@ -42,7 +42,7 @@ A personalized AI language tutor that combines the best of both worlds: the adap
 - Quick, engaging assessment (dynamic mix of interactive exercises and conversation — should feel fun, not like an exam)
 - Result: specific gap map + general A1-C2 reference level
 - First topic proposals based on assessment results
-- Grammar reference: `GRAMMAR_CURRICULUM.md` (A1-C2 topic tree based on Instituto Cervantes)
+- Grammar reference: `docs/grammar/` (A1-C2 topic tree based on Instituto Cervantes)
 
 ### 2. Personal Program
 - AI generates short modules (5-10 lessons each)
@@ -173,7 +173,7 @@ Post-MVP validation:
 ### Phase 2: Assessment Engine
 - Pre-assessment questions (prior experience, approximate level, learning goal)
 - Assessment flow UI (interactive, engaging)
-- AI-powered question generation (Claude API) using GRAMMAR_CURRICULUM.md as reference
+- AI-powered question generation (Claude API) using docs/grammar/ as reference
 - Gap analysis algorithm
 - Level mapping (specific gaps + A1-C2 reference)
 - First module proposals based on results

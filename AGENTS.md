@@ -18,7 +18,7 @@ No test runner or linter is configured yet.
 Key docs:
 - `PRODUCT.md` — product vision, problem statement, MVP features (assessment, personal program, interactive exercises, chat with Celestia, gamification), and phased roadmap
 - `TECH.md` — architecture, tech stack, hosting, and key technical decisions
-- `GRAMMAR_CURRICULUM.md` — complete A1-C2 grammar topic tree based on Instituto Cervantes Plan Curricular, used as reference for assessment and lesson generation
+- `docs/grammar/` — complete A1-C2 grammar topic tree based on Instituto Cervantes Plan Curricular, used as reference for assessment and lesson generation
 
 ## Current Codebase
 
