@@ -164,13 +164,25 @@ Post-MVP validation:
 
 ## MVP Roadmap
 
-### Phase 1: Foundation
-- Monorepo setup (Turborepo: Next.js + NestJS)
-- Authentication (Google social login)
-- Database schema design (PostgreSQL + Prisma)
-- Basic UI layout (mobile-first)
+Detailed implementation steps for each phase: [`docs/plan/`](plan/README.md)
 
-### Phase 2: Assessment Engine
+### Phase 0: Project Foundation & Tooling
+- Next.js project setup (App Router, TypeScript, Tailwind CSS)
+- shadcn/ui installation and base components
+- Project structure (FSD-lite: app / modules / shared)
+- Tooling: Biome, Vitest, Playwright, Husky + lint-staged
+
+### Phase 1: Design System & Base UI
+- Design tokens, theme, typography
+- Mobile-first base layout
+- Reusable UI components
+
+### Phase 2: Auth & Database
+- Auth.js (next-auth v5) with Google provider
+- Database schema design (PostgreSQL + Prisma)
+- Session management, protected routes
+
+### Phase 3: Assessment Engine
 - Pre-assessment questions (prior experience, approximate level, learning goal)
 - Assessment flow UI (interactive, engaging)
 - AI-powered question generation (Claude API) using docs/grammar/ as reference
@@ -178,7 +190,7 @@ Post-MVP validation:
 - Level mapping (specific gaps + A1-C2 reference)
 - First module proposals based on results
 
-### Phase 3: Interactive Exercise Engine
+### Phase 4: Interactive Exercise Engine
 - Exercise component library (gap fill, multiple choice, match pairs, reorder, free writing, reading comprehension)
 - Exercise generation engine (Claude API) with validation pipeline
 - Answer validation and feedback system
@@ -186,7 +198,7 @@ Post-MVP validation:
 - Interest-based content personalization
 - "Report error" button
 
-### Phase 4: Curriculum & Lessons
+### Phase 5: Curriculum & Lessons
 - Dynamic curriculum generation
 - Module/lesson structure (5-10 lessons per module, 5-min blocks)
 - Home screen (quick start, new topics, deep review, progress dashboard)
@@ -194,7 +206,7 @@ Post-MVP validation:
 - Module selection and user override ("focus on tenses")
 - Program adaptation based on categorized mistakes (grammar, vocabulary, word order)
 
-### Phase 5: Chat with Celestia
+### Phase 6: Chat with Celestia
 - Free conversation interface
 - Situation mode (role-play scenarios)
 - Real-time mistake correction
@@ -202,7 +214,7 @@ Post-MVP validation:
 - Interest learning from conversations
 - Conversation insights feeding into program
 
-### Phase 6: Vocabulary & Gamification
+### Phase 7: Vocabulary, Spaced Repetition & Gamification
 - Personal vocabulary dictionary with flashcard review
 - Spaced repetition algorithm for vocabulary and grammar review
 - Mistake journal with error categorization and pattern detection
@@ -211,3 +223,9 @@ Post-MVP validation:
 - Accuracy tracking
 - Streak system
 - Lesson completion stats
+
+### Phase 8: Polish & Deploy
+- Performance optimization
+- Error handling and edge cases
+- Production deployment (Vercel + Neon)
+- Final QA and testing

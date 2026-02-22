@@ -22,11 +22,14 @@ Key docs:
 
 ## Current Codebase
 
-- Single-package TypeScript project (not a monorepo yet).
+- Single-package TypeScript project.
 - Entry point: `src/index.ts` (currently a minimal stub).
 - Build output: `dist/` via `tsc` (`npm run build`).
 - No tests or linting configured.
 
-## Planned Architecture (Docs)
+## Architecture (Docs)
 
-- `docs/TECH.md` describes an intended Turborepo setup (`apps/web`, `apps/api`, `packages/shared`) with Next.js + NestJS + Prisma/PostgreSQL, Claude API, and Google OAuth.
+- Single Next.js project (App Router) — Server Actions + Route Handlers replace the need for a separate backend.
+- Stack: Next.js, Tailwind CSS, shadcn/ui, Prisma + PostgreSQL (Neon), Auth.js (next-auth v5), Claude API.
+- FSD-lite structure: `src/app/` (routes), `src/modules/` (features), `src/shared/` (UI, lib, hooks, types).
+- Full details in `docs/TECH.md`.
