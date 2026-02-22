@@ -15,7 +15,7 @@ No separate API server. Next.js handles all server-side logic:
 Colocated with their feature module:
 
 ```ts
-// modules/exercise/actions.ts
+// src/modules/exercise/actions.ts
 "use server"
 
 import { prisma } from '@/shared/lib/prisma'
@@ -39,7 +39,7 @@ export async function submitAnswer(exerciseId: string, answer: string) {
 ## Route Handlers (Streaming & Integrations)
 
 ```ts
-// app/api/chat/route.ts
+// src/app/api/chat/route.ts
 export async function POST(request: Request) {
   const session = await auth()
   if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })

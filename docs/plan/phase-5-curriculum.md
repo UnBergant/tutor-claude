@@ -6,7 +6,7 @@ Dynamic modules, lessons from 5-minute blocks, home screen.
 ## Steps
 
 1. **Home Screen** — quick start, new topics, deep review, progress dashboard, phrase of the day
-2. **Lesson Flow** — Zustand store, lesson = sequence of 5-min blocks, review → new material → exercises
+2. **Lesson Flow** — Zustand store, lesson = sequence of 5-min blocks (content units, no timer — see PRODUCT.md), review → new material → exercises
 3. **Curriculum Generation** — Server Actions + Claude API, adaptation based on progress and mistakes
 4. **Module Selection UI** — cards with difficulty, user choice, override option
 

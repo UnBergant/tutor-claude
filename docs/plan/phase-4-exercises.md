@@ -9,6 +9,7 @@ Library of interactive exercises — core of the learning process.
 2. **Exercise Engine** — Zustand store, useExercise hook, ExerciseContainer, factory by type
 3. **Feedback System** — correct/incorrect animations, contextual hints, "retry topic", "report error"
 4. **Server Actions** — exercise generation via Claude API, validation pipeline, answer evaluation
+   - Validation pipeline order: JSON schema validation → Latin American blocklist check → LanguageTool Cloud API grammar check (free tier, 20 req/min) → AI confidence threshold (>0.8) → retry on failure (max 2 retries)
 5. **Shared Types** — ExerciseType, Exercise, ExerciseContent, ExerciseAttempt types
 
 ## Key Files
