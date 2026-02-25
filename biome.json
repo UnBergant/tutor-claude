@@ -37,6 +37,12 @@
       }
     }
   },
+  "css": {
+    "parser": {
+      "cssModules": false,
+      "tailwindDirectives": true
+    }
+  },
   "files": {
     "includes": ["src/**", "*.config.ts", "*.config.mjs"]
   }
