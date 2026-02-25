@@ -1,4 +1,4 @@
-# Phase 7: Vocabulary, Spaced Repetition & Gamification
+# Phase 5: Vocabulary, Spaced Repetition & Gamification
 
 ## Goal
 Personal dictionary, spaced review, streak, progress dashboard.

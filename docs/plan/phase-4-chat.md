@@ -1,4 +1,4 @@
-# Phase 6: Chat with Celestia
+# Phase 4: Chat with Celestia
 
 ## Goal
 Free chat + situation mode + error correction.
