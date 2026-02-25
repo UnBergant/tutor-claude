@@ -40,10 +40,12 @@ celestia/
 │   │   │   ├── actions.ts      # Server Actions
 │   │   │   ├── store.ts        # Zustand (complex state)
 │   │   │   └── hooks.ts
+│   │   ├── onboarding/
 │   │   ├── exercise/
 │   │   ├── chat/
 │   │   ├── lesson/
-│   │   └── vocabulary/
+│   │   ├── vocabulary/
+│   │   └── progress/
 │   └── shared/
 │       ├── ui/                 # shadcn/ui components
 │       ├── lib/                # Prisma, AI client, auth, rate limiter
@@ -52,38 +54,38 @@ celestia/
 ├── prisma/
 │   └── schema.prisma
 ├── components.json             # shadcn/ui config
-├── tailwind.config.ts
+├── postcss.config.mjs
 ├── next.config.ts
 ├── biome.json
 └── package.json
 ```
 
-## Принятые технические решения
+## Technical Decisions
 
-| Аспект | Решение |
+| Aspect | Decision |
 |---|---|
-| Фреймворк | Next.js (App Router) — full-stack |
-| БД | PostgreSQL + Prisma |
-| Стилизация | Tailwind CSS |
-| UI компоненты | shadcn/ui (Radix-based, копируемые) |
-| Упражнения | Кастомные exercise-компоненты (GapFill, MatchPairs и т.д.) |
-| State (client) | Zustand (только сложный feature-стейт) |
+| Framework | Next.js (App Router) — full-stack |
+| Database | PostgreSQL + Prisma |
+| Styling | Tailwind CSS |
+| UI Components | shadcn/ui (Radix-based, copied into project) |
+| Exercises | Custom exercise components (GapFill, MatchPairs, etc.) |
+| State (client) | Zustand (complex feature state only) |
 | State (server) | TanStack Query |
-| Тесты | Vitest + Playwright (минимальный набор) |
-| Фронт-архитектура | FSD-lite (app / modules / shared) |
-| Линтинг | Biome |
+| Testing | Vitest + Playwright (minimal set) |
+| Frontend Architecture | FSD-lite (app / modules / shared) |
+| Linting | Biome |
 | AI | Claude API (Anthropic) |
 | Auth | Auth.js (next-auth v5) + Google provider |
-| AI rate-limiting | Per-account лимиты (daily/monthly), хранятся в БД |
+| AI Rate Limiting | Per-account limits (daily/monthly), stored in DB |
 
-## Принципы разработки
+## Development Principles
 
-1. **Mobile-first** — Tailwind mobile-first утилиты, touch-friendly интерфейс; PWA-кандидат post-MVP
-2. **Разделение concerns**: Presentation (Tailwind + shadcn/ui) / State (Zustand + TanStack Query) / Logic (хуки, Server Actions)
-3. **SOLID**: каждый модуль — одна ответственность; зависимости через интерфейсы; Open/Closed через пропсы и композицию
-4. **FSD-lite**: переиспользуемые UI-примитивы в `shared/ui/`, фичевые модули в `modules/`, маршруты в `app/`
-5. **Container/Presentational**: компоненты-контейнеры подключают сторы и передают данные через пропсы в чистые презентационные компоненты
-6. **Server-first**: Server Components по умолчанию, Client Components только при необходимости (интерактивность, хуки)
+1. **Mobile-first** — Tailwind mobile-first utilities, touch-friendly interface; PWA candidate post-MVP
+2. **Separation of Concerns**: Presentation (Tailwind + shadcn/ui) / State (Zustand + TanStack Query) / Logic (hooks, Server Actions)
+3. **SOLID**: each module has single responsibility; dependencies via interfaces; Open/Closed via props and composition
+4. **FSD-lite**: reusable UI primitives in `shared/ui/`, feature modules in `modules/`, routes in `app/`
+5. **Container/Presentational**: container components connect stores and pass data via props to pure presentational components
+6. **Server-first**: Server Components by default, Client Components only when needed (interactivity, hooks)
 
 ## Hosting & Infrastructure
 

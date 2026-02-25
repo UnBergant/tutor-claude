@@ -84,6 +84,14 @@ celestia/
 4. **FSD-lite** — UI-примитивы в `shared/ui/`, фичевые модули в `modules/`, маршруты в `app/`
 5. **Server-first** — Server Components по умолчанию, Client Components только при необходимости
 
+## Getting Started
+
+```bash
+nvm use          # activate Node version from .nvmrc
+npm install      # install dependencies
+npm run dev      # start dev server on localhost:3000
+```
+
 ## AI Agents
 
 Проект использует два AI-агента параллельно:

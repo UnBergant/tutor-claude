@@ -1,14 +1,47 @@
 {
-  "name": "tutor-claude",
-  "version": "1.0.0",
-  "description": "",
-  "main": "dist/index.js",
+  "name": "celestia",
+  "version": "0.1.0",
+  "private": true,
   "scripts": {
-    "build": "tsc"
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "biome check src/",
+    "lint:fix": "biome check --write src/",
+    "format": "biome format --write src/",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "prepare": "husky"
   },
-  "dependencies": {},
+  "dependencies": {
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.575.0",
+    "next": "^16.1.6",
+    "next-themes": "^0.4.6",
+    "radix-ui": "^1.4.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.5.0"
+  },
   "devDependencies": {
-    "typescript": "^5.5.3"
+    "@biomejs/biome": "^2.4.4",
+    "@playwright/test": "^1.58.2",
+    "@tailwindcss/postcss": "^4.2.0",
+    "@types/node": "25.3.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.2.0",
+    "typescript": "^5.5.3",
+    "vitest": "^4.0.18"
   },
-  "private": true
+  "lint-staged": {
+    "*.{ts,tsx,js,json}": "biome check --write --no-errors-on-unmatched"
+  }
 }

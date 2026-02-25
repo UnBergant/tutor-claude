@@ -59,14 +59,14 @@ A personalized AI language tutor that combines the best of both worlds: the adap
 - **Phrase of the day** — popular Spanish idiom/expression with explanation, tied to streak
 
 ### 4. Lesson Structure
-- Lessons are built from **5-minute blocks** (3-4 blocks per session)
+- Lessons are built from **5-minute blocks** (3-4 blocks per session). A block is a **content unit** (3-5 exercises + explanation), not a real-time timer. "5 minutes" is a target content volume guideline for AI generation, not enforced in UI
 - Easy to complete one block when short on time; more blocks = deeper topic coverage
 - Each lesson starts with a short review of previous topics
 - New material with explanations in context
 - Interactive exercises within the lesson
 - Celestia corrects mistakes and explains why
 - Popular Spanish phrases and expressions woven into lessons
-- **Contextual hints on errors** — not just "wrong, correct answer is X", but a mini-explanation of the rule + offer to revisit the topic. If accepted, Celestia adjusts the program
+- **Contextual hints on errors** — not just "wrong, correct answer is X", but a pre-generated mini-explanation of the rule (generated as part of the exercise JSON, field `explanation`) + "Review this topic" button that adds the topic to curriculum. No additional AI call at error time — hints are part of the exercise payload
 
 ### 5. Interactive Exercise Interface
 Core interactive element types (Duolingo/Skyeng style):
@@ -134,8 +134,11 @@ Post-MVP validation:
 
 ## Conversation Data Strategy
 
-- Do NOT store full conversation history
-- Extract and store: user interests, topic preferences, key mistakes, learning patterns
+- Do NOT store full conversation history — no `ChatMessage` database model
+- Chat messages exist only in-memory during the active session
+- After each conversation, a Server Action extracts and stores structured insights:
+  - `UserInterest` records (topic, confidence, source)
+  - `MistakeEntry` records (category, pattern, related topic)
 - This data feeds into program adaptation and exercise personalization
 
 ## Post-MVP Features
@@ -153,6 +156,7 @@ Post-MVP validation:
 - Public leaderboard
 - Real-world content (Spanish news, song lyrics, memes, recipes) as reading comprehension material
 - Meme on the app start screen
+- Machine-readable grammar curriculum (`docs/grammar/topics.json` with `topicId`, `level`, `prerequisites`, `tags`) for deterministic curriculum engine
 
 ### Weekly Report
 - Weekly summary from Celestia: lessons completed, accuracy, words learned, weak spots, focus suggestion for next week
@@ -164,50 +168,4 @@ Post-MVP validation:
 
 ## MVP Roadmap
 
-### Phase 1: Foundation
-- Monorepo setup (Turborepo: Next.js + NestJS)
-- Authentication (Google social login)
-- Database schema design (PostgreSQL + Prisma)
-- Basic UI layout (mobile-first)
-
-### Phase 2: Assessment Engine
-- Pre-assessment questions (prior experience, approximate level, learning goal)
-- Assessment flow UI (interactive, engaging)
-- AI-powered question generation (Claude API) using docs/grammar/ as reference
-- Gap analysis algorithm
-- Level mapping (specific gaps + A1-C2 reference)
-- First module proposals based on results
-
-### Phase 3: Interactive Exercise Engine
-- Exercise component library (gap fill, multiple choice, match pairs, reorder, free writing, reading comprehension)
-- Exercise generation engine (Claude API) with validation pipeline
-- Answer validation and feedback system
-- Contextual error hints with rule explanations
-- Interest-based content personalization
-- "Report error" button
-
-### Phase 4: Curriculum & Lessons
-- Dynamic curriculum generation
-- Module/lesson structure (5-10 lessons per module, 5-min blocks)
-- Home screen (quick start, new topics, deep review, progress dashboard)
-- Lesson UI with review section + exercises
-- Module selection and user override ("focus on tenses")
-- Program adaptation based on categorized mistakes (grammar, vocabulary, word order)
-
-### Phase 5: Chat with Celestia
-- Free conversation interface
-- Situation mode (role-play scenarios)
-- Real-time mistake correction
-- Popular phrases and idioms usage
-- Interest learning from conversations
-- Conversation insights feeding into program
-
-### Phase 6: Vocabulary & Gamification
-- Personal vocabulary dictionary with flashcard review
-- Spaced repetition algorithm for vocabulary and grammar review
-- Mistake journal with error categorization and pattern detection
-- Phrase of the day
-- Progress dashboard with per-topic indicators
-- Accuracy tracking
-- Streak system
-- Lesson completion stats
+9 phases from foundation to deployment. **Single source of truth**: [`docs/plan/`](plan/README.md)
