@@ -18,7 +18,7 @@ Set up Next.js project with tooling and project structure. No features — only 
 6. **Update docs** — CLAUDE.md + AGENTS.md with new structure and commands
 
 ## Key Files
-- package.json, next.config.ts, tailwind.config.ts
+- package.json, next.config.ts, postcss.config.mjs
 - components.json (shadcn/ui)
 - biome.json
 - src/app/layout.tsx, src/app/globals.css

@@ -54,7 +54,7 @@ celestia/
 ├── prisma/
 │   └── schema.prisma
 ├── components.json             # shadcn/ui config
-├── tailwind.config.ts
+├── postcss.config.mjs
 ├── next.config.ts
 ├── biome.json
 └── package.json
