@@ -1,0 +1,358 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ──────────────────────────────────────────────
+// Enums
+// ──────────────────────────────────────────────
+
+enum AssessmentStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum LessonStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum ExerciseType {
+  GAP_FILL
+  MULTIPLE_CHOICE
+  MATCH_PAIRS
+  REORDER_WORDS
+  FREE_WRITING
+  READING_COMPREHENSION
+}
+
+enum BlockType {
+  REVIEW
+  NEW_MATERIAL
+}
+
+enum VocabSource {
+  LESSON
+  CHAT
+}
+
+enum MistakeCategory {
+  GRAMMAR
+  VOCABULARY
+  WORD_ORDER
+}
+
+// ──────────────────────────────────────────────
+// Auth.js Models
+// ──────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts        Account[]
+  sessions        Session[]
+  profile         UserProfile?
+  assessments     Assessment[]
+  modules         Module[]
+  lessonProgress  LessonProgress[]
+  exerciseAttempts ExerciseAttempt[]
+  vocabularyWords VocabularyWord[]
+  mistakeEntries  MistakeEntry[]
+  userInterests   UserInterest[]
+  aiUsage         AiUsage[]
+  aiLimits        AiLimits?
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ──────────────────────────────────────────────
+// Application Models
+// ──────────────────────────────────────────────
+
+model UserProfile {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  currentLevel      String    @default("A1")
+  learningGoal      String?
+  interfaceLanguage String    @default("en")
+  lastActivityDate  DateTime?
+  currentStreak     Int       @default(0)
+  longestStreak     Int       @default(0)
+  lessonsCompleted  Int       @default(0)
+  totalXp           Int       @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Assessment {
+  id              String           @id @default(cuid())
+  userId          String
+  status          AssessmentStatus @default(IN_PROGRESS)
+  determinedLevel String?
+  confidence      Float?
+  questionsAsked  Int              @default(0)
+  startedAt       DateTime         @default(now())
+  completedAt     DateTime?
+
+  user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers AssessmentAnswer[]
+
+  @@index([userId, status])
+}
+
+model AssessmentAnswer {
+  id            String   @id @default(cuid())
+  assessmentId  String
+  topicId       String
+  level         String
+  question      String
+  userAnswer    String
+  correctAnswer String
+  isCorrect     Boolean
+  createdAt     DateTime @default(now())
+
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@index([assessmentId])
+}
+
+model Module {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  topicId     String
+  level       String
+  order       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@index([userId])
+}
+
+model Lesson {
+  id               String   @id @default(cuid())
+  moduleId         String
+  title            String
+  description      String?
+  topicId          String
+  estimatedMinutes Int      @default(15)
+  order            Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  module   Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  blocks   LessonBlock[]
+  progress LessonProgress[]
+  exercises Exercise[]
+
+  @@index([moduleId])
+}
+
+model LessonBlock {
+  id        String    @id @default(cuid())
+  lessonId  String
+  type      BlockType
+  content   String
+  order     Int
+  createdAt DateTime  @default(now())
+
+  lesson    Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  exercises Exercise[]
+
+  @@index([lessonId])
+}
+
+model LessonProgress {
+  id           String       @id @default(cuid())
+  userId       String
+  lessonId     String
+  status       LessonStatus @default(NOT_STARTED)
+  score        Float?
+  nextReviewAt DateTime?
+  interval     Int          @default(1)
+  completedAt  DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId, nextReviewAt])
+}
+
+model Exercise {
+  id            String       @id @default(cuid())
+  lessonId      String
+  lessonBlockId String?
+  type          ExerciseType
+  question      String
+  content       Json
+  correctAnswer String
+  explanation   String?
+  order         Int
+  createdAt     DateTime     @default(now())
+
+  lesson      Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonBlock LessonBlock? @relation(fields: [lessonBlockId], references: [id], onDelete: SetNull)
+  attempts    ExerciseAttempt[]
+
+  @@index([lessonId])
+  @@index([lessonBlockId])
+}
+
+model ExerciseAttempt {
+  id         String           @id @default(cuid())
+  userId     String
+  exerciseId String
+  userAnswer String
+  isCorrect  Boolean
+  category   MistakeCategory?
+  feedback   String?
+  createdAt  DateTime         @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@index([userId, exerciseId])
+}
+
+model VocabularyWord {
+  id           String      @id @default(cuid())
+  userId       String
+  word         String
+  translation  String
+  context      String?
+  source       VocabSource
+  nextReviewAt DateTime?
+  interval     Int         @default(1)
+  easeFactor   Float       @default(2.5)
+  repetitions  Int         @default(0)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, word])
+  @@index([userId, nextReviewAt])
+}
+
+model MistakeEntry {
+  id             String          @id @default(cuid())
+  userId         String
+  category       MistakeCategory
+  pattern        String
+  count          Int             @default(1)
+  relatedTopicId String?
+  lastOccurred   DateTime        @default(now())
+  createdAt      DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, category])
+}
+
+model UserInterest {
+  id            String   @id @default(cuid())
+  userId        String
+  topic         String
+  confidence    Int      @default(50)
+  source        String
+  mentionCount  Int      @default(1)
+  lastMentioned DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ──────────────────────────────────────────────
+// AI Rate Limiting
+// ──────────────────────────────────────────────
+
+model AiUsage {
+  id           String   @id @default(cuid())
+  userId       String
+  endpoint     String
+  model        String
+  tokensInput  Int
+  tokensOutput Int
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model AiLimits {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  dailyLimit   Int
+  monthlyLimit Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AiSettings {
+  id           String   @id @default(cuid())
+  endpoint     String   @unique
+  model        String
+  dailyLimit   Int
+  monthlyLimit Int
+  updatedAt    DateTime @updatedAt
+}
