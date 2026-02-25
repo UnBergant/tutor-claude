@@ -3,6 +3,13 @@
 This file provides guidance to OpenAI Codex when working with code in this repository.
 This project uses both Claude Code (CLAUDE.md) and OpenAI Codex (AGENTS.md) simultaneously. Keep both files in sync when making changes to project instructions.
 
+## Prerequisites
+
+```bash
+nvm use          # activate Node version from .nvmrc (required before any npm command)
+npm install      # install dependencies
+```
+
 ## Build & Dev
 
 ```bash

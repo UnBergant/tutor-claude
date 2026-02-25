@@ -39,7 +39,7 @@ next-env.d.ts
 .vscode
 
 # claude code
-.claude/settings.local.json
+да.claude/settings.local.json
 
 # legacy
 /tmp
