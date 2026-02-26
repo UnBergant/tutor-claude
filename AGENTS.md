@@ -31,7 +31,7 @@ Key docs:
 - `docs/PRODUCT.md` — product vision, problem statement, MVP features (assessment, personal program, interactive exercises, chat with Celestia, gamification), and phased roadmap
 - `docs/TECH.md` — architecture, tech stack, hosting, and key technical decisions
 - `docs/grammar/` — complete A1-C2 grammar topic tree based on Instituto Cervantes Plan Curricular, used as reference for assessment and lesson generation
-- `docs/plan/` — phased implementation roadmap (Phase 0–8)
+- `docs/plan/` — phased implementation roadmap (Phase 0–6, function-first vertical slices)
 - `docs/dev/` — technical decision docs (architecture, AI integration, state, styling, testing, API design)
 
 ## Current Codebase

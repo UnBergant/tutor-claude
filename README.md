@@ -73,7 +73,7 @@ celestia/
 | [`docs/PRODUCT.md`](docs/PRODUCT.md) | Видение продукта, проблема, MVP-фичи, роадмап |
 | [`docs/TECH.md`](docs/TECH.md) | Стек, архитектурные решения, принципы разработки |
 | [`docs/dev/`](docs/dev/) | Детальные технические решения (архитектура, стили, стейт, тесты, API, AI) |
-| [`docs/plan/`](docs/plan/) | Фазы реализации (Phase 0–8) |
+| [`docs/plan/`](docs/plan/) | Фазы реализации (Phase 0–6, function-first) |
 | [`docs/grammar/`](docs/grammar/) | Грамматический каркас A1-C2 по Instituto Cervantes |
 
 ## Development Principles

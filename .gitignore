@@ -38,8 +38,11 @@ next-env.d.ts
 .idea
 .vscode
 
+# prisma generated client
+src/generated/
+
 # claude code
-да.claude/settings.local.json
+.claude/settings.local.json
 
 # legacy
 /tmp
