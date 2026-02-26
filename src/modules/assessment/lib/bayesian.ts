@@ -270,7 +270,4 @@ export function createInitialState(thetaPrior: number): BayesianState {
 /** Maximum number of assessment items */
 export const MAX_ITEMS = 10;
 
-/** Items in phase 1 (level-finding) */
-export const PHASE_1_ITEMS = 6;
-
 export { LEVEL_THETA_RANGES };

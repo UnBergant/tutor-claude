@@ -12,7 +12,7 @@ Onboarding + level assessment — key feature for personalization. Includes firs
 3. **Assessment Flow** — Zustand store, components, exercise-based only (no free chat at this phase)
 4. **Assessment Server Actions** — question generation via Claude API, gap analysis, level mapping
 5. **Claude API integration** — AI client wrapper, structured output, Castellano system prompt
-6. **Results** — visualization of strengths/weaknesses, first module proposals, save to UserProfile
+6. **Results** — visualization of strengths/weaknesses (gap map), save to UserProfile
 
 ## Assessment Algorithm
 
@@ -64,7 +64,7 @@ FOR items 7-10:
   3. AI generates item → student responds → update gap map
 ```
 
-If confidence is still < 50% after item 6, items 7-8 continue boundary probing; items 9-10 do gap mapping.
+The transition to Phase 2 uses SE as a proxy for confidence: `se < 0.5` triggers early transition (high confidence reached before item 6). After item 6, Phase 2 begins unconditionally — if SE is still large after 6 boundary items, additional probing yields diminishing returns and gap mapping provides more value for the remaining 4 items.
 
 ### Gateway Topics (Level Discriminators)
 
@@ -140,10 +140,12 @@ Reference grammar topics from `docs/grammar/` (A1–C2 topic trees as Claude API
 
 ## Key Files
 - src/modules/onboarding/ (components, steps)
-- src/modules/assessment/ (components, store, actions)
-- src/modules/exercise/components/ (GapFill, MultipleChoice — shared with Phase 3)
-- src/shared/lib/ai.ts (Claude API client)
+- src/modules/assessment/ (components, store, actions, lib/bayesian, lib/item-selection, lib/gap-map)
+- src/modules/exercise/components/ (GapFill, MultipleChoice, ExerciseShell — shared with Phase 3)
+- src/shared/lib/ai/client.ts (Claude API wrapper with structured output)
+- src/shared/lib/ai/rate-limiter.ts (rate limiting + token usage tracking)
 - src/shared/lib/ai/prompts/ (system, assessment prompts)
+- src/shared/data/grammar-topics.ts (111 topics, A1–C2, Instituto Cervantes)
 
 ## Verification
 - User completes onboarding → assessment → sees results
