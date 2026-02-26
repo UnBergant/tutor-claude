@@ -185,7 +185,7 @@ describe("getAiSettings", () => {
 
     const result = await getAiSettings("assessment");
 
-    expect(result.model).toBe("claude-haiku-4-5-20251001");
+    expect(result.model).toBe("claude-sonnet-4-6");
     expect(result.dailyLimit).toBe(500_000);
   });
 

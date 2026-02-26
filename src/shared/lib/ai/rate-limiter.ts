@@ -23,7 +23,7 @@ interface AiSettingsResult {
 
 const DEFAULT_SETTINGS: Record<string, AiSettingsResult> = {
   assessment: {
-    model: "claude-haiku-4-5-20251001",
+    model: "claude-sonnet-4-6",
     dailyLimit: 500_000,
     monthlyLimit: 10_000_000,
   },
