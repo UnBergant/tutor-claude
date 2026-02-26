@@ -9,7 +9,7 @@
 | Phase | Name | Status |
 |-------|------|--------|
 | 0 | [Project Foundation & Tooling](phase-0-foundation.md) | ✅ Done |
-| 1 | [Auth, Database & App Shell](phase-1-auth-app-shell.md) | ⏳ Pending |
+| 1 | [Auth, Database & App Shell](phase-1-auth-app-shell.md) | ✅ Done |
 | 2 | [Assessment Engine](phase-2-assessment.md) | ⏳ Pending |
 | 3 | [Exercise Engine & Curriculum](phase-3-exercises-curriculum.md) | ⏳ Pending |
 | 4 | [Chat with Celestia](phase-4-chat.md) | ⏳ Pending |
