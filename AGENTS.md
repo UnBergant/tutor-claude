@@ -44,6 +44,10 @@ Key docs:
 - shadcn/ui components in `src/shared/ui/` — Button, Card, Input, Dialog, Select, Tabs, Sonner, Badge, Progress, Avatar.
 - Path alias: `@/*` → `src/*`.
 
+## Phase Tracking
+
+When completing a phase, always update `docs/plan/README.md` — mark the phase as `✅ Done`.
+
 ## Architecture
 
 - Single Next.js project (App Router) — Server Actions + Route Handlers replace the need for a separate backend.

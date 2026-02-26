@@ -52,6 +52,10 @@ Key docs:
 - Import rule: `modules/` import from `shared/`, never from each other.
 - Full details in `docs/TECH.md`.
 
+## Phase Tracking
+
+When completing a phase, always update `docs/plan/README.md` — mark the phase as `✅ Done`.
+
 ## Codex CLI — Second Opinion Skills
 
 OpenAI Codex CLI (v0.104.0+) installed globally. Two custom skills available globally (`~/.claude/commands/`):
