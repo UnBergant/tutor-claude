@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { LEVEL_COLORS, LEVEL_LABELS } from "@/shared/data/cefr-display";
 import { auth } from "@/shared/lib/auth";
 import { prisma } from "@/shared/lib/prisma";
 import { cn } from "@/shared/lib/utils";
@@ -15,24 +16,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/shared/ui/card";
-
-const LEVEL_LABELS: Record<CEFRLevel, string> = {
-  A1: "Breakthrough",
-  A2: "Waystage",
-  B1: "Threshold",
-  B2: "Vantage",
-  C1: "Effective Proficiency",
-  C2: "Mastery",
-};
-
-const LEVEL_COLORS: Record<CEFRLevel, string> = {
-  A1: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
-  A2: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-  B1: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-  B2: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300",
-  C1: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
-  C2: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
-};
 
 export default async function AssessmentResultsPage() {
   const session = await auth();
@@ -80,7 +63,12 @@ export default async function AssessmentResultsPage() {
           Assessment Results
         </h1>
         <p className="text-muted-foreground">
-          Completed on {assessment.completedAt?.toLocaleDateString()}
+          Completed on{" "}
+          {assessment.completedAt?.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
         </p>
       </div>
 

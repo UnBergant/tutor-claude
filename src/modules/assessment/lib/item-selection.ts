@@ -42,7 +42,7 @@ export function selectPhase1Topic(state: BayesianState): SelectedItem | null {
     }
   }
 
-  const boundary = findMostUncertainBoundary(state.theta, state.se);
+  const boundary = findMostUncertainBoundary(state.theta);
   const gatewayIds = GATEWAY_TOPICS[boundary];
 
   // Pick first untested gateway topic at this boundary
@@ -156,10 +156,11 @@ function selectFallbackTopic(state: BayesianState): SelectedItem | null {
   const classifiedLevel = state.classifiedLevel ?? "A1";
   const levelIdx = CEFR_LEVEL_INDEX[classifiedLevel];
 
-  // Spiral outward from classified level
+  // Spiral outward from classified level: 0, +1, -1, +2, -2, ...
   for (let offset = 0; offset < CEFR_LEVELS.length; offset++) {
-    for (const dir of [0, 1, -1]) {
-      const idx = levelIdx + (dir === 0 ? 0 : dir * offset);
+    const candidates = offset === 0 ? [0] : [offset, -offset];
+    for (const delta of candidates) {
+      const idx = levelIdx + delta;
       if (idx < 0 || idx >= CEFR_LEVELS.length) continue;
       const level = CEFR_LEVELS[idx];
       const topics = TOPICS_BY_LEVEL[level];

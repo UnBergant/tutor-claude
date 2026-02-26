@@ -81,12 +81,14 @@ function gaussianPdf(x: number, mean: number, sd: number): number {
  *
  * Uses numerical integration (Gaussian quadrature) over θ grid.
  * posterior(θ) ∝ prior(θ) × ∏ P(response_i | θ)
+ *
+ * Always uses the original prior and recomputes from ALL responses
+ * to avoid double-counting the prior in sequential updates.
  */
 export function computePosterior(
   priorMean: number,
   priorSd: number,
-  responses: [string, boolean, number][], // [topicId, isCorrect, difficulty]
-  exerciseTypes: AssessmentExerciseType[],
+  responses: [string, boolean, number, AssessmentExerciseType][],
 ): { theta: number; se: number } {
   const step = (QUAD_MAX - QUAD_MIN) / (QUAD_POINTS - 1);
   let sumWeight = 0;
@@ -101,8 +103,7 @@ export function computePosterior(
 
     // Likelihood from all responses
     for (let j = 0; j < responses.length; j++) {
-      const [, isCorrect, difficulty] = responses[j];
-      const exType = exerciseTypes[j] ?? "gap_fill";
+      const [, isCorrect, difficulty, exType] = responses[j];
       const p = irtProbability(theta, difficulty, exType);
       logWeight += isCorrect ? Math.log(p) : Math.log(1 - p);
     }
@@ -122,6 +123,9 @@ export function computePosterior(
 
 /**
  * Full Bayesian update: given current state and a new response, return updated state.
+ *
+ * Uses the original prior (thetaPrior, sePrior) with ALL accumulated responses
+ * to avoid double-counting the prior in sequential updates.
  */
 export function bayesianUpdate(
   state: BayesianState,
@@ -130,25 +134,15 @@ export function bayesianUpdate(
   difficulty: number,
   exerciseType: AssessmentExerciseType,
 ): BayesianState {
-  const responses: [string, boolean, number][] = [
+  const responses: [string, boolean, number, AssessmentExerciseType][] = [
     ...state.responses,
-    [topicId, isCorrect, difficulty],
+    [topicId, isCorrect, difficulty, exerciseType],
   ];
 
-  // Reconstruct exercise types from response count
-  // We don't store exercise types in responses to keep the array lean;
-  // for EAP we use uniform assumption which is acceptable for classification
-  const exerciseTypes = responses.map((_, i) =>
-    i % 2 === 0 ? ("gap_fill" as const) : ("multiple_choice" as const),
-  );
-  // Override the latest with the actual type
-  exerciseTypes[exerciseTypes.length - 1] = exerciseType;
-
   const { theta, se } = computePosterior(
-    state.theta,
-    state.se,
+    state.thetaPrior,
+    state.sePrior,
     responses,
-    exerciseTypes,
   );
 
   const itemCount = responses.length;
@@ -167,6 +161,8 @@ export function bayesianUpdate(
   return {
     theta,
     se,
+    thetaPrior: state.thetaPrior,
+    sePrior: state.sePrior,
     responses,
     phase,
     classifiedLevel,
@@ -226,15 +222,12 @@ export function levelConfidence(
 }
 
 /**
- * Find the most uncertain boundary — the one closest to the current θ estimate.
+ * Find the nearest CEFR boundary to the current θ estimate.
  *
  * Boundary θ values: A1/A2 = -1.0, A2/B1 = 0.0, B1/B2 = 1.0, B2/C1 = 2.0, C1/C2 = 3.0
  * The nearest boundary is where a test item gives the most discrimination information.
  */
-export function findMostUncertainBoundary(
-  theta: number,
-  _se: number,
-): LevelBoundary {
+export function findMostUncertainBoundary(theta: number): LevelBoundary {
   const boundaryThetas: [LevelBoundary, number][] = [
     ["A1/A2", -1.0],
     ["A2/B1", 0.0],
@@ -264,6 +257,8 @@ export function createInitialState(thetaPrior: number): BayesianState {
   return {
     theta: thetaPrior,
     se: 1.5, // Wide initial variance
+    thetaPrior,
+    sePrior: 1.5,
     responses: [],
     phase: 1,
     classifiedLevel: null,

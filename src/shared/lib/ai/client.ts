@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { getAiSettings, recordAiUsage } from "./rate-limiter";
+import { checkAiLimit, getAiSettings, recordAiUsage } from "./rate-limiter";
 
 let client: Anthropic | null = null;
 
@@ -43,6 +43,12 @@ export async function generateStructured<T>(
 ): Promise<{ data: T; inputTokens: number; outputTokens: number }> {
   const settings = await getAiSettings(options.endpoint);
   const model = options.model ?? settings.model;
+
+  // Check rate limits before making the AI call
+  const limitCheck = await checkAiLimit(options.userId);
+  if (!limitCheck.allowed) {
+    throw new Error("AI usage limit exceeded. Please try again later.");
+  }
 
   const response = await getClient().messages.create({
     model,

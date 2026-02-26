@@ -52,8 +52,12 @@ export interface BayesianState {
   theta: number;
   /** Standard deviation of posterior */
   se: number;
-  /** Responses so far: [topicId, isCorrect, difficulty][] */
-  responses: [string, boolean, number][];
+  /** Initial prior mean (preserved for EAP recomputation from scratch) */
+  thetaPrior: number;
+  /** Initial prior SD */
+  sePrior: number;
+  /** Responses so far: [topicId, isCorrect, difficulty, exerciseType][] */
+  responses: [string, boolean, number, AssessmentExerciseType][];
   /** Current assessment phase: 1 = level-finding, 2 = gap-mapping */
   phase: 1 | 2;
   /** Classified level after phase 1 (set after item 6 or when confidence > 50%) */

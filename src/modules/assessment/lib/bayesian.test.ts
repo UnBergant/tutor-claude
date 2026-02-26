@@ -58,43 +58,32 @@ describe("topicDifficulty", () => {
 
 describe("computePosterior", () => {
   it("returns prior when there are no responses", () => {
-    const { theta, se } = computePosterior(0.0, 1.5, [], []);
+    const { theta, se } = computePosterior(0.0, 1.5, []);
     expect(theta).toBeCloseTo(0.0, 0);
     expect(se).toBeCloseTo(1.5, 0);
   });
 
   it("shifts θ upward after correct response", () => {
-    const { theta } = computePosterior(
-      0.0,
-      1.5,
-      [["a2-01", true, 0.0]],
-      ["gap_fill"],
-    );
+    const { theta } = computePosterior(0.0, 1.5, [
+      ["a2-01", true, 0.0, "gap_fill"],
+    ]);
     expect(theta).toBeGreaterThan(0.0);
   });
 
   it("shifts θ downward after incorrect response", () => {
-    const { theta } = computePosterior(
-      0.0,
-      1.5,
-      [["a2-01", false, 0.0]],
-      ["gap_fill"],
-    );
+    const { theta } = computePosterior(0.0, 1.5, [
+      ["a2-01", false, 0.0, "gap_fill"],
+    ]);
     expect(theta).toBeLessThan(0.0);
   });
 
   it("reduces SE after multiple responses", () => {
-    const { se: se0 } = computePosterior(0.0, 1.5, [], []);
-    const { se: se3 } = computePosterior(
-      0.0,
-      1.5,
-      [
-        ["a2-01", true, 0.0],
-        ["b1-02", true, 0.5],
-        ["b2-09", false, 1.5],
-      ],
-      ["gap_fill", "multiple_choice", "gap_fill"],
-    );
+    const { se: se0 } = computePosterior(0.0, 1.5, []);
+    const { se: se3 } = computePosterior(0.0, 1.5, [
+      ["a2-01", true, 0.0, "gap_fill"],
+      ["b1-02", true, 0.5, "multiple_choice"],
+      ["b2-09", false, 1.5, "gap_fill"],
+    ]);
     expect(se3).toBeLessThan(se0);
   });
 });

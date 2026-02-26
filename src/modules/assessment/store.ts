@@ -4,7 +4,6 @@ import type {
   ExperienceLevel,
   LearningGoal,
 } from "@/shared/types/assessment";
-import type { ExerciseFeedback } from "@/shared/types/exercise";
 import type { AssessmentClientItem } from "./actions";
 
 type OnboardingStep =
@@ -33,10 +32,6 @@ interface AssessmentState {
   questionNumber: number;
   setQuestionNumber: (n: number) => void;
 
-  // Feedback
-  feedback: ExerciseFeedback | null;
-  setFeedback: (feedback: ExerciseFeedback | null) => void;
-
   // Loading states
   isGenerating: boolean;
   setIsGenerating: (loading: boolean) => void;
@@ -58,7 +53,6 @@ const initialState = {
   assessmentId: null as string | null,
   currentItem: null as AssessmentClientItem | null,
   questionNumber: 0,
-  feedback: null as ExerciseFeedback | null,
   isGenerating: false,
   isSubmitting: false,
   result: null as AssessmentResult | null,
@@ -72,7 +66,6 @@ export const useAssessmentStore = create<AssessmentState>((set) => ({
   setAssessmentId: (assessmentId) => set({ assessmentId }),
   setCurrentItem: (currentItem) => set({ currentItem }),
   setQuestionNumber: (questionNumber) => set({ questionNumber }),
-  setFeedback: (feedback) => set({ feedback }),
   setIsGenerating: (isGenerating) => set({ isGenerating }),
   setIsSubmitting: (isSubmitting) => set({ isSubmitting }),
   setResult: (result) => set({ result }),

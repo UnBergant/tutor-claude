@@ -111,6 +111,7 @@ export function AssessmentFlow() {
     >
       {currentItem.exerciseType === "gap_fill" && (
         <GapFill
+          key={currentItem.topicId}
           before={currentItem.before ?? ""}
           after={currentItem.after ?? ""}
           hint={currentItem.hint}
@@ -125,6 +126,7 @@ export function AssessmentFlow() {
       {currentItem.exerciseType === "multiple_choice" &&
         currentItem.options && (
           <MultipleChoice
+            key={currentItem.topicId}
             prompt={currentItem.prompt}
             options={currentItem.options}
             feedback={null}
