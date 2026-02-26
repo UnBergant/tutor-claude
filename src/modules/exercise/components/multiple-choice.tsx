@@ -48,7 +48,7 @@ export function MultipleChoice({
 
           return (
             <Button
-              key={option}
+              key={`${index}-${option}`}
               variant="outline"
               disabled={disabled || showResult}
               onClick={() => handleSelect(index)}

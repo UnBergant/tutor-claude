@@ -21,6 +21,7 @@ export const EXPERIENCE_THETA_MAP: Record<ExperienceLevel, number> = {
 
 export type LearningGoal =
   | "travel"
+  | "relocation"
   | "work"
   | "academic"
   | "culture"

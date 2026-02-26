@@ -29,7 +29,7 @@ import {
   MAX_ITEMS,
 } from "./lib/bayesian";
 import { buildGapMap } from "./lib/gap-map";
-import { selectNextTopic } from "./lib/item-selection";
+import { type SelectedItem, selectNextTopic } from "./lib/item-selection";
 
 // ──────────────────────────────────────────────
 // Public types returned to the client
@@ -44,6 +44,10 @@ export interface AssessmentClientItem {
   /** Blank parts for gap_fill */
   before?: string;
   after?: string;
+  /** Base form hint for gap_fill (infinitive, singular, etc.) */
+  hint?: string;
+  /** English translation of the sentence for gap_fill */
+  translation?: string;
 }
 
 export interface StartAssessmentResult {
@@ -87,38 +91,8 @@ export async function startAssessment(
   const selected = selectNextTopic(bayesianState);
   if (!selected) throw new Error("No topics available");
 
-  // Generate first question via AI
-  const topic = TOPIC_BY_ID.get(selected.topicId);
-  if (!topic) throw new Error(`Unknown topic: ${selected.topicId}`);
-  const aiItem = await generateAssessmentItem(
-    topic,
-    selected.exerciseType,
-    userId,
-  );
-
-  // Build full item (server-side, includes correctAnswer)
-  const fullItem: AssessmentItem = {
-    topicId: selected.topicId,
-    level: selected.level,
-    exerciseType: selected.exerciseType,
-    prompt:
-      selected.exerciseType === "gap_fill"
-        ? `${(aiItem as GeneratedGapFill).before}___${(aiItem as GeneratedGapFill).after}`
-        : (aiItem as GeneratedMultipleChoice).prompt,
-    options:
-      selected.exerciseType === "multiple_choice"
-        ? (aiItem as GeneratedMultipleChoice).options
-        : null,
-    correctAnswer:
-      selected.exerciseType === "gap_fill"
-        ? (aiItem as GeneratedGapFill).correctAnswer
-        : (aiItem as GeneratedMultipleChoice).correctAnswer,
-    explanation:
-      selected.exerciseType === "gap_fill"
-        ? (aiItem as GeneratedGapFill).explanation
-        : (aiItem as GeneratedMultipleChoice).explanation,
-    difficulty: selected.difficulty,
-  };
+  // Generate first question via AI + build full item
+  const { fullItem, aiItem } = await buildFullItem(selected, userId);
 
   // Store Bayesian state + current item in metadata
   const metadata = {
@@ -244,36 +218,10 @@ export async function submitAssessmentAnswer(
   }
 
   // Generate next question
-  const topic = TOPIC_BY_ID.get(selected.topicId);
-  if (!topic) throw new Error(`Unknown topic: ${selected.topicId}`);
-  const aiItem = await generateAssessmentItem(
-    topic,
-    selected.exerciseType,
+  const { fullItem: nextFullItem, aiItem } = await buildFullItem(
+    selected,
     userId,
   );
-
-  const nextFullItem: AssessmentItem = {
-    topicId: selected.topicId,
-    level: selected.level,
-    exerciseType: selected.exerciseType,
-    prompt:
-      selected.exerciseType === "gap_fill"
-        ? `${(aiItem as GeneratedGapFill).before}___${(aiItem as GeneratedGapFill).after}`
-        : (aiItem as GeneratedMultipleChoice).prompt,
-    options:
-      selected.exerciseType === "multiple_choice"
-        ? (aiItem as GeneratedMultipleChoice).options
-        : null,
-    correctAnswer:
-      selected.exerciseType === "gap_fill"
-        ? (aiItem as GeneratedGapFill).correctAnswer
-        : (aiItem as GeneratedMultipleChoice).correctAnswer,
-    explanation:
-      selected.exerciseType === "gap_fill"
-        ? (aiItem as GeneratedGapFill).explanation
-        : (aiItem as GeneratedMultipleChoice).explanation,
-    difficulty: selected.difficulty,
-  };
 
   // Update metadata with new state and next item
   await prisma.assessment.update({
@@ -301,6 +249,52 @@ export async function submitAssessmentAnswer(
 // ──────────────────────────────────────────────
 // Internal helpers
 // ──────────────────────────────────────────────
+
+/**
+ * Look up grammar topic, generate AI question, and build the full AssessmentItem.
+ * Shared by startAssessment and submitAssessmentAnswer to avoid duplication.
+ */
+async function buildFullItem(
+  selected: SelectedItem,
+  userId: string,
+): Promise<{
+  fullItem: AssessmentItem;
+  aiItem: GeneratedGapFill | GeneratedMultipleChoice;
+}> {
+  const topic = TOPIC_BY_ID.get(selected.topicId);
+  if (!topic) throw new Error(`Unknown topic: ${selected.topicId}`);
+
+  const aiItem = await generateAssessmentItem(
+    topic,
+    selected.exerciseType,
+    userId,
+  );
+
+  const fullItem: AssessmentItem = {
+    topicId: selected.topicId,
+    level: selected.level,
+    exerciseType: selected.exerciseType,
+    prompt:
+      selected.exerciseType === "gap_fill"
+        ? `${(aiItem as GeneratedGapFill).before}___${(aiItem as GeneratedGapFill).after}`
+        : (aiItem as GeneratedMultipleChoice).prompt,
+    options:
+      selected.exerciseType === "multiple_choice"
+        ? (aiItem as GeneratedMultipleChoice).options
+        : null,
+    correctAnswer:
+      selected.exerciseType === "gap_fill"
+        ? (aiItem as GeneratedGapFill).correctAnswer
+        : (aiItem as GeneratedMultipleChoice).correctAnswer,
+    explanation:
+      selected.exerciseType === "gap_fill"
+        ? (aiItem as GeneratedGapFill).explanation
+        : (aiItem as GeneratedMultipleChoice).explanation,
+    difficulty: selected.difficulty,
+  };
+
+  return { fullItem, aiItem };
+}
 
 async function completeAssessment(
   assessmentId: string,
@@ -439,7 +433,103 @@ async function generateAssessmentItem(
     schema: MULTIPLE_CHOICE_SCHEMA,
     userId,
   });
-  return data;
+  return sanitizeMultipleChoice(data);
+}
+
+/**
+ * Check if the hint is essentially the same as the correct answer.
+ * If so, the hint gives away the answer and should be suppressed.
+ */
+function hintMatchesAnswer(hint: string, correctAnswer: string): boolean {
+  const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+  return normalize(hint) === normalize(correctAnswer);
+}
+
+/**
+ * Sanitize AI-generated gap-fill parts.
+ * If the AI included underscores/blanks in before or after, re-split around them.
+ */
+function sanitizeGapFill(
+  before: string,
+  after: string,
+): { before: string; after: string } {
+  const blankPattern = /_{2,}|\.{3,}|…/;
+  const beforeMatch = blankPattern.exec(before);
+  const afterMatch = blankPattern.exec(after);
+
+  if (beforeMatch) {
+    // Underscores found in "before" — everything before them is real "before",
+    // everything after them belongs to "after"
+    const realBefore = before.slice(0, beforeMatch.index);
+    const rest = before.slice(beforeMatch.index + beforeMatch[0].length);
+    return { before: realBefore, after: rest + after };
+  }
+
+  if (afterMatch) {
+    // Underscores found in "after" — everything after them is real "after",
+    // everything before them belongs to "before"
+    const rest = after.slice(0, afterMatch.index);
+    const realAfter = after.slice(afterMatch.index + afterMatch[0].length);
+    return { before: before + rest, after: realAfter };
+  }
+
+  return { before, after };
+}
+
+/**
+ * Sanitize AI-generated multiple-choice data.
+ * 1. Ensures all 4 options are distinct (de-duplicates).
+ * 2. Detects answer leaking: if the correct answer text appears in the prompt, removes it.
+ */
+function sanitizeMultipleChoice(
+  data: GeneratedMultipleChoice,
+): GeneratedMultipleChoice {
+  // De-duplicate options
+  const seen = new Set<string>();
+  const options = data.options.map((opt) => {
+    let unique = opt;
+    let suffix = 2;
+    while (seen.has(unique)) {
+      unique = `${opt} (${suffix})`;
+      suffix++;
+    }
+    seen.add(unique);
+    return unique;
+  });
+
+  // Fix answer leaking: if words from correctAnswer appear in prompt after ___
+  let prompt = data.prompt;
+  const blankIdx = prompt.indexOf("___");
+  if (blankIdx !== -1) {
+    const afterBlank = prompt.slice(blankIdx + 3).trim();
+    const correctAnswer = data.options[data.correctIndex];
+    // Check if the text after blank starts with a word from the correct answer
+    const correctWords = correctAnswer.toLowerCase().split(/\s+/);
+    const afterWords = afterBlank.toLowerCase().split(/\s+/);
+    // Find how many leading words in afterBlank match trailing words in correctAnswer
+    let leakedCount = 0;
+    for (let i = 0; i < afterWords.length && i < correctWords.length; i++) {
+      const afterClean = afterWords[i].replace(/[.,;:!?]/g, "");
+      if (correctWords.includes(afterClean)) {
+        leakedCount++;
+      } else {
+        break;
+      }
+    }
+    if (leakedCount > 0) {
+      // Remove leaked words from the text after blank
+      const afterBlankWords = afterBlank.split(/\s+/);
+      const cleaned = afterBlankWords.slice(leakedCount).join(" ");
+      prompt = `${prompt.slice(0, blankIdx + 3)} ${cleaned}`;
+    }
+  }
+
+  return {
+    ...data,
+    prompt,
+    options,
+    correctAnswer: options[data.correctIndex],
+  };
 }
 
 /**
@@ -452,14 +542,19 @@ function toClientItem(
 ): AssessmentClientItem {
   if (exerciseType === "gap_fill") {
     const gf = aiItem as GeneratedGapFill;
+    const { before, after } = sanitizeGapFill(gf.before, gf.after);
     return {
       topicId: fullItem.topicId,
       level: fullItem.level,
       exerciseType: "gap_fill",
       prompt: fullItem.prompt,
       options: null,
-      before: gf.before,
-      after: gf.after,
+      before,
+      after,
+      hint: hintMatchesAnswer(gf.hint, fullItem.correctAnswer)
+        ? undefined
+        : gf.hint,
+      translation: gf.translation,
     };
   }
 

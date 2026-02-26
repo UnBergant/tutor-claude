@@ -1,5 +1,7 @@
 # Phase 2: Assessment Engine
 
+> **Known issues:** see [product-issues.md](../dev/product-issues.md) (filter by "Phase 2")
+
 ## Goal
 Onboarding + level assessment — key feature for personalization. Includes first exercise components (GapFill, MultipleChoice) reused later in Phase 3.
 

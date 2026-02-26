@@ -40,7 +40,6 @@ export function AssessmentResults() {
   if (!result) return null;
 
   const summary = summarizeGapMap(result.gapMap);
-  const confidencePercent = Math.round(result.confidence * 100);
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
@@ -63,9 +62,7 @@ export function AssessmentResults() {
             <span className="text-lg text-muted-foreground">
               {LEVEL_LABELS[result.estimatedLevel]}
             </span>
-            <span className="text-sm text-muted-foreground">
-              Confidence: {confidencePercent}%
-            </span>
+            {/* Confidence hidden — 10 items too few for meaningful % */}
           </div>
         </CardContent>
       </Card>

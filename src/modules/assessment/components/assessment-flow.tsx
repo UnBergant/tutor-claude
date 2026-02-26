@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { ExerciseShell } from "@/modules/exercise/components/exercise-shell";
 import { GapFill } from "@/modules/exercise/components/gap-fill";
 import { MultipleChoice } from "@/modules/exercise/components/multiple-choice";
-import { Button } from "@/shared/ui/button";
 import { startAssessment, submitAssessmentAnswer } from "../actions";
 import { MAX_ITEMS } from "../lib/bayesian";
 import { useAssessmentStore } from "../store";
@@ -16,22 +15,30 @@ export function AssessmentFlow() {
     assessmentId,
     currentItem,
     questionNumber,
-    feedback,
     isGenerating,
     isSubmitting,
     setAssessmentId,
     setCurrentItem,
     setQuestionNumber,
-    setFeedback,
     setIsGenerating,
     setIsSubmitting,
     setResult,
     setStep,
   } = useAssessmentStore();
 
+  // Guard against React Strict Mode double-mount calling startAssessment twice
+  const initCalledRef = useRef(false);
+
   // Start assessment on mount
   const initAssessment = useCallback(async () => {
-    if (assessmentId || !experienceLevel || !learningGoal) return;
+    if (
+      initCalledRef.current ||
+      assessmentId ||
+      !experienceLevel ||
+      !learningGoal
+    )
+      return;
+    initCalledRef.current = true;
 
     setIsGenerating(true);
     try {
@@ -41,6 +48,7 @@ export function AssessmentFlow() {
       setQuestionNumber(1);
     } catch (error) {
       console.error("Failed to start assessment:", error);
+      initCalledRef.current = false; // allow retry on error
     } finally {
       setIsGenerating(false);
     }
@@ -58,7 +66,7 @@ export function AssessmentFlow() {
     initAssessment();
   }, [initAssessment]);
 
-  // Submit answer
+  // Submit answer and immediately advance (no feedback in assessment)
   async function handleSubmit(answer: string, _selectedIndex?: number) {
     if (!assessmentId || isSubmitting) return;
 
@@ -66,50 +74,23 @@ export function AssessmentFlow() {
     try {
       const result = await submitAssessmentAnswer(assessmentId, answer);
 
-      // Show feedback
-      setFeedback({
-        isCorrect: result.isCorrect,
-        correctAnswer: result.correctAnswer,
-        explanation: result.explanation,
-      });
-
       setQuestionNumber(result.questionNumber + 1);
 
-      // If assessment is complete, store result
+      // Assessment complete → go to results
       if (result.result) {
         setResult(result.result);
+        setStep("results");
+        return;
       }
 
-      // Store next item for after feedback
+      // Immediately show next question
       if (result.nextItem) {
-        // Wait for user to dismiss feedback before showing next item
-        setTimeout(() => {}, 0);
-        // Store in a ref-like pattern via the store
-        useAssessmentStore.setState({ _nextItem: result.nextItem } as never);
+        setCurrentItem(result.nextItem);
       }
     } catch (error) {
       console.error("Failed to submit answer:", error);
     } finally {
       setIsSubmitting(false);
-    }
-  }
-
-  // Advance to next question or results
-  function handleNext() {
-    const store = useAssessmentStore.getState();
-    const result = store.result;
-    const nextItem = (store as unknown as { _nextItem: typeof currentItem })
-      ._nextItem;
-
-    if (result) {
-      setStep("results");
-      return;
-    }
-
-    if (nextItem) {
-      setCurrentItem(nextItem);
-      setFeedback(null);
-      useAssessmentStore.setState({ _nextItem: null } as never);
     }
   }
 
@@ -123,45 +104,35 @@ export function AssessmentFlow() {
   }
 
   return (
-    <div className="space-y-4">
-      <ExerciseShell
-        current={Math.min(questionNumber, MAX_ITEMS)}
-        total={MAX_ITEMS}
-        loading={false}
-      >
-        {currentItem.exerciseType === "gap_fill" && (
-          <GapFill
-            before={currentItem.before ?? ""}
-            after={currentItem.after ?? ""}
-            feedback={feedback}
+    <ExerciseShell
+      current={Math.min(questionNumber, MAX_ITEMS)}
+      total={MAX_ITEMS}
+      loading={isSubmitting}
+    >
+      {currentItem.exerciseType === "gap_fill" && (
+        <GapFill
+          before={currentItem.before ?? ""}
+          after={currentItem.after ?? ""}
+          hint={currentItem.hint}
+          translation={currentItem.translation}
+          feedback={null}
+          onSubmit={handleSubmit}
+          disabled={isSubmitting}
+          submitLabel="Continue"
+        />
+      )}
+
+      {currentItem.exerciseType === "multiple_choice" &&
+        currentItem.options && (
+          <MultipleChoice
+            prompt={currentItem.prompt}
+            options={currentItem.options}
+            feedback={null}
+            correctIndex={-1}
             onSubmit={handleSubmit}
-            disabled={isSubmitting || !!feedback}
+            disabled={isSubmitting}
           />
         )}
-
-        {currentItem.exerciseType === "multiple_choice" &&
-          currentItem.options && (
-            <MultipleChoice
-              prompt={currentItem.prompt}
-              options={currentItem.options}
-              feedback={feedback}
-              correctIndex={-1} // Not exposed to client until feedback
-              onSubmit={handleSubmit}
-              disabled={isSubmitting || !!feedback}
-            />
-          )}
-      </ExerciseShell>
-
-      {/* Next button (shown after feedback) */}
-      {feedback && (
-        <div className="flex justify-center">
-          <Button onClick={handleNext} size="lg">
-            {useAssessmentStore.getState().result
-              ? "See results"
-              : "Next question"}
-          </Button>
-        </div>
-      )}
-    </div>
+    </ExerciseShell>
   );
 }

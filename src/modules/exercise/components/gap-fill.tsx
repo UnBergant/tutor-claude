@@ -11,20 +11,29 @@ interface GapFillProps {
   before: string;
   /** Text after the blank */
   after: string;
+  /** Spanish base form shown inline next to blank (e.g., infinitive, singular) */
+  hint?: string;
+  /** English translation shown below the sentence */
+  translation?: string;
   /** Feedback (null while answering) */
   feedback: ExerciseFeedback | null;
   /** Called when student submits their answer */
   onSubmit: (answer: string) => void;
   /** Disable input (e.g., while checking) */
   disabled?: boolean;
+  /** Submit button label (default: "Check") */
+  submitLabel?: string;
 }
 
 export function GapFill({
   before,
   after,
+  hint,
+  translation,
   feedback,
   onSubmit,
   disabled,
+  submitLabel = "Check",
 }: GapFillProps) {
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -76,8 +85,16 @@ export function GapFill({
             spellCheck={false}
           />
         )}
+        {hint && (
+          <span className="mx-1 text-muted-foreground italic">({hint})</span>
+        )}
         {after}
       </p>
+
+      {/* English translation */}
+      {translation && (
+        <p className="text-sm text-muted-foreground italic">{translation}</p>
+      )}
 
       {/* Feedback */}
       {feedback && (
@@ -105,7 +122,7 @@ export function GapFill({
           disabled={!value.trim() || disabled}
           className="w-full sm:w-auto"
         >
-          Check
+          {submitLabel}
         </Button>
       )}
     </div>

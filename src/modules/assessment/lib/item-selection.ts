@@ -20,7 +20,7 @@ import type { CEFRLevel } from "@/shared/types/grammar";
 import { CEFR_LEVEL_INDEX, CEFR_LEVELS } from "@/shared/types/grammar";
 import { findMostUncertainBoundary, topicDifficulty } from "./bayesian";
 
-interface SelectedItem {
+export interface SelectedItem {
   topicId: string;
   level: CEFRLevel;
   exerciseType: AssessmentExerciseType;

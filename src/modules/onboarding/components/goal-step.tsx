@@ -23,6 +23,11 @@ const GOAL_OPTIONS: {
     description: "I want to communicate while traveling in Spain",
   },
   {
+    value: "relocation",
+    label: "Living in Spain",
+    description: "I'm moving to or already live in Spain",
+  },
+  {
     value: "work",
     label: "Work / Career",
     description: "I need Spanish for professional purposes",
