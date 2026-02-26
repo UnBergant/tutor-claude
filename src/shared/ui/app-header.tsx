@@ -5,7 +5,6 @@ import { signOut, useSession } from "next-auth/react";
 import { useSidebar } from "@/shared/hooks/use-sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
 import { Button } from "@/shared/ui/button";
-import { ThemeToggle } from "@/shared/ui/theme-toggle";
 
 export function AppHeader() {
   const { toggle } = useSidebar();
@@ -36,8 +35,6 @@ export function AppHeader() {
       <div className="flex-1" />
 
       <div className="flex items-center gap-3">
-        <ThemeToggle />
-
         <Avatar size="sm">
           {user?.image && (
             <AvatarImage src={user.image} alt={user.name ?? ""} />
