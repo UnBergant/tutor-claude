@@ -14,11 +14,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.picture = user.image;
       }
       return token;
     },
     session({ session, token }) {
       session.user.id = token.id as string;
+      session.user.image = token.picture as string | null;
       return session;
     },
     authorized({ auth, request }) {
