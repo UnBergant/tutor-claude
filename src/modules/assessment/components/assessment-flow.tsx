@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef } from "react";
 import { ExerciseShell } from "@/modules/exercise/components/exercise-shell";
 import { GapFill } from "@/modules/exercise/components/gap-fill";
 import { MultipleChoice } from "@/modules/exercise/components/multiple-choice";
+import { Button } from "@/shared/ui/button";
+import { Card, CardContent } from "@/shared/ui/card";
 import { startAssessment, submitAssessmentAnswer } from "../actions";
 import { MAX_ITEMS } from "../lib/bayesian";
 import { useAssessmentStore } from "../store";
@@ -17,11 +19,13 @@ export function AssessmentFlow() {
     questionNumber,
     isGenerating,
     isSubmitting,
+    error,
     setAssessmentId,
     setCurrentItem,
     setQuestionNumber,
     setIsGenerating,
     setIsSubmitting,
+    setError,
     setResult,
     setStep,
   } = useAssessmentStore();
@@ -41,14 +45,16 @@ export function AssessmentFlow() {
     initCalledRef.current = true;
 
     setIsGenerating(true);
+    setError(null);
     try {
       const result = await startAssessment(experienceLevel, learningGoal);
       setAssessmentId(result.assessmentId);
       setCurrentItem(result.item);
       setQuestionNumber(1);
-    } catch (error) {
-      console.error("Failed to start assessment:", error);
+    } catch (err) {
+      console.error("Failed to start assessment:", err);
       initCalledRef.current = false; // allow retry on error
+      setError("Failed to start the assessment. Please try again.");
     } finally {
       setIsGenerating(false);
     }
@@ -58,6 +64,7 @@ export function AssessmentFlow() {
     learningGoal,
     setAssessmentId,
     setCurrentItem,
+    setError,
     setIsGenerating,
     setQuestionNumber,
   ]);
@@ -92,6 +99,18 @@ export function AssessmentFlow() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  // Error state with retry
+  if (error) {
+    return (
+      <Card className="mx-auto max-w-md text-center">
+        <CardContent className="flex flex-col items-center gap-4 pt-6">
+          <p className="text-muted-foreground">{error}</p>
+          <Button onClick={() => initAssessment()}>Try again</Button>
+        </CardContent>
+      </Card>
+    );
   }
 
   // Loading state

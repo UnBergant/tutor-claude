@@ -32,11 +32,13 @@ interface AssessmentState {
   questionNumber: number;
   setQuestionNumber: (n: number) => void;
 
-  // Loading states
+  // Loading & error states
   isGenerating: boolean;
   setIsGenerating: (loading: boolean) => void;
   isSubmitting: boolean;
   setIsSubmitting: (loading: boolean) => void;
+  error: string | null;
+  setError: (error: string | null) => void;
 
   // Result
   result: AssessmentResult | null;
@@ -55,6 +57,7 @@ const initialState = {
   questionNumber: 0,
   isGenerating: false,
   isSubmitting: false,
+  error: null as string | null,
   result: null as AssessmentResult | null,
 };
 
@@ -68,6 +71,7 @@ export const useAssessmentStore = create<AssessmentState>((set) => ({
   setQuestionNumber: (questionNumber) => set({ questionNumber }),
   setIsGenerating: (isGenerating) => set({ isGenerating }),
   setIsSubmitting: (isSubmitting) => set({ isSubmitting }),
+  setError: (error) => set({ error }),
   setResult: (result) => set({ result }),
   reset: () => set(initialState),
 }));

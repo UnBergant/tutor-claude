@@ -1,5 +1,6 @@
 "use server";
 
+import { z } from "zod/v4";
 import type { Prisma } from "@/generated/prisma";
 import { TOPIC_BY_ID } from "@/shared/data/grammar-topics";
 import { generateStructured } from "@/shared/lib/ai/client";
@@ -30,6 +31,33 @@ import {
 } from "./lib/bayesian";
 import { buildGapMap } from "./lib/gap-map";
 import { type SelectedItem, selectNextTopic } from "./lib/item-selection";
+
+// ──────────────────────────────────────────────
+// Input validation schemas
+// ──────────────────────────────────────────────
+
+const experienceLevelSchema = z.enum([
+  "complete_beginner",
+  "know_basics",
+  "simple_conversations",
+  "comfortable_most_topics",
+  "advanced_near_fluent",
+  "near_native",
+]);
+
+const learningGoalSchema = z.enum([
+  "travel",
+  "relocation",
+  "work",
+  "academic",
+  "culture",
+  "personal",
+]);
+
+const submitAnswerSchema = z.object({
+  assessmentId: z.string().uuid(),
+  answer: z.string().min(1).max(500),
+});
 
 // ──────────────────────────────────────────────
 // Public types returned to the client
@@ -79,6 +107,9 @@ export async function startAssessment(
   experienceLevel: ExperienceLevel,
   learningGoal: LearningGoal,
 ): Promise<StartAssessmentResult> {
+  experienceLevelSchema.parse(experienceLevel);
+  learningGoalSchema.parse(learningGoal);
+
   const session = await auth();
   if (!session?.user?.id) throw new Error("Not authenticated");
   const userId = session.user.id;
@@ -108,7 +139,7 @@ export async function startAssessment(
       userId,
       status: "IN_PROGRESS",
       questionsAsked: 0,
-      metadata: metadata as unknown as Prisma.InputJsonValue,
+      metadata: toJsonValue(metadata),
     },
   });
 
@@ -133,6 +164,8 @@ export async function submitAssessmentAnswer(
   assessmentId: string,
   answer: string,
 ): Promise<SubmitAnswerResult> {
+  submitAnswerSchema.parse({ assessmentId, answer });
+
   const session = await auth();
   if (!session?.user?.id) throw new Error("Not authenticated");
   const userId = session.user.id;
@@ -165,19 +198,6 @@ export async function submitAssessmentAnswer(
     currentItem.exerciseType,
   );
 
-  // Save the answer in DB
-  await prisma.assessmentAnswer.create({
-    data: {
-      assessmentId,
-      topicId: currentItem.topicId,
-      level: currentItem.level,
-      question: currentItem.prompt,
-      userAnswer: answer,
-      correctAnswer: currentItem.correctAnswer,
-      isCorrect,
-    },
-  });
-
   // Bayesian update
   const updatedState = bayesianUpdate(
     bayesianState,
@@ -189,6 +209,17 @@ export async function submitAssessmentAnswer(
 
   const questionNumber = updatedState.responses.length;
 
+  // Shared answer data for atomic writes
+  const answerData = {
+    assessmentId,
+    topicId: currentItem.topicId,
+    level: currentItem.level,
+    question: currentItem.prompt,
+    userAnswer: answer,
+    correctAnswer: currentItem.correctAnswer,
+    isCorrect,
+  };
+
   // Check if assessment is complete
   if (questionNumber >= MAX_ITEMS) {
     return await completeAssessment(
@@ -199,6 +230,7 @@ export async function submitAssessmentAnswer(
       isCorrect,
       currentItem,
       questionNumber,
+      answerData,
     );
   }
 
@@ -214,27 +246,31 @@ export async function submitAssessmentAnswer(
       isCorrect,
       currentItem,
       questionNumber,
+      answerData,
     );
   }
 
-  // Generate next question
+  // Generate next question (AI call — can fail)
   const { fullItem: nextFullItem, aiItem } = await buildFullItem(
     selected,
     userId,
   );
 
-  // Update metadata with new state and next item
-  await prisma.assessment.update({
-    where: { id: assessmentId },
-    data: {
-      questionsAsked: questionNumber,
-      metadata: {
-        ...meta,
-        bayesianState: updatedState,
-        currentItem: nextFullItem,
-      } as unknown as Prisma.InputJsonValue,
-    },
-  });
+  // Atomically write answer + updated metadata together
+  await prisma.$transaction([
+    prisma.assessmentAnswer.create({ data: answerData }),
+    prisma.assessment.update({
+      where: { id: assessmentId },
+      data: {
+        questionsAsked: questionNumber,
+        metadata: toJsonValue({
+          ...meta,
+          bayesianState: updatedState,
+          currentItem: nextFullItem,
+        }),
+      },
+    }),
+  ]);
 
   return {
     isCorrect,
@@ -249,6 +285,11 @@ export async function submitAssessmentAnswer(
 // ──────────────────────────────────────────────
 // Internal helpers
 // ──────────────────────────────────────────────
+
+/** Type-safe cast to Prisma JSON value. */
+function toJsonValue(value: unknown): Prisma.InputJsonValue {
+  return value as Prisma.InputJsonValue;
+}
 
 /**
  * Look up grammar topic, generate AI question, and build the full AssessmentItem.
@@ -304,6 +345,15 @@ async function completeAssessment(
   lastIsCorrect: boolean,
   lastItem: AssessmentItem,
   questionNumber: number,
+  answerData: {
+    assessmentId: string;
+    topicId: string;
+    level: string;
+    question: string;
+    userAnswer: string;
+    correctAnswer: string;
+    isCorrect: boolean;
+  },
 ): Promise<SubmitAnswerResult> {
   const estimatedLevel = state.classifiedLevel ?? classifyLevel(state.theta);
   const confidence = levelConfidence(state.theta, state.se, estimatedLevel);
@@ -322,35 +372,36 @@ async function completeAssessment(
     gapMap,
   };
 
-  // Update assessment as completed
-  await prisma.assessment.update({
-    where: { id: assessmentId },
-    data: {
-      status: "COMPLETED",
-      determinedLevel: estimatedLevel,
-      confidence,
-      questionsAsked: questionNumber,
-      completedAt: new Date(),
-      metadata: {
-        bayesianState: state,
-        result,
+  // Atomically write answer + completion + profile update
+  await prisma.$transaction([
+    prisma.assessmentAnswer.create({ data: answerData }),
+    prisma.assessment.update({
+      where: { id: assessmentId },
+      data: {
+        status: "COMPLETED",
+        determinedLevel: estimatedLevel,
+        confidence,
+        questionsAsked: questionNumber,
+        completedAt: new Date(),
+        metadata: toJsonValue({
+          bayesianState: state,
+          result,
+          learningGoal,
+        }),
+      },
+    }),
+    prisma.userProfile.upsert({
+      where: { userId },
+      create: {
+        userId,
+        currentLevel: estimatedLevel,
         learningGoal,
-      } as unknown as Prisma.InputJsonValue,
-    },
-  });
-
-  // Update UserProfile with determined level
-  await prisma.userProfile.upsert({
-    where: { userId },
-    create: {
-      userId,
-      currentLevel: estimatedLevel,
-      learningGoal,
-    },
-    update: {
-      currentLevel: estimatedLevel,
-    },
-  });
+      },
+      update: {
+        currentLevel: estimatedLevel,
+      },
+    }),
+  ]);
 
   return {
     isCorrect: lastIsCorrect,

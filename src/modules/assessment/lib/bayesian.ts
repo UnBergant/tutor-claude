@@ -197,8 +197,9 @@ export function levelConfidence(
   level: CEFRLevel,
 ): number {
   const { base, span } = LEVEL_THETA_RANGES[level];
-  const lower = base;
-  const upper = base + span;
+  // A1 and C2 are open-ended: A1 = (-∞, -1), C2 = [3, +∞)
+  const lower = level === "A1" ? QUAD_MIN : base;
+  const upper = level === "C2" ? QUAD_MAX : base + span;
 
   // Integrate Gaussian from lower to upper
   const steps = 100;

@@ -146,19 +146,31 @@ describe("levelConfidence", () => {
     const conf = levelConfidence(0.0, 1.0, "B1");
     expect(conf).toBeLessThan(0.5);
   });
+
+  it("returns high confidence for strong A1 student (open lower bound)", () => {
+    // θ = -2.5 with small SE should integrate over (-∞, -1), not just [-2, -1]
+    const conf = levelConfidence(-2.5, 0.3, "A1");
+    expect(conf).toBeGreaterThan(0.8);
+  });
+
+  it("returns high confidence for strong C2 student (open upper bound)", () => {
+    // θ = 4.5 with small SE should integrate over [3, +∞), not just [3, 4]
+    const conf = levelConfidence(4.5, 0.3, "C2");
+    expect(conf).toBeGreaterThan(0.8);
+  });
 });
 
 describe("findMostUncertainBoundary", () => {
   it("returns A1/A2 for low θ", () => {
-    expect(findMostUncertainBoundary(-1.5, 0.5)).toBe("A1/A2");
+    expect(findMostUncertainBoundary(-1.5)).toBe("A1/A2");
   });
 
   it("returns B1/B2 for middle θ", () => {
-    expect(findMostUncertainBoundary(1.0, 0.5)).toBe("B1/B2");
+    expect(findMostUncertainBoundary(1.0)).toBe("B1/B2");
   });
 
   it("returns C1/C2 for high θ", () => {
-    expect(findMostUncertainBoundary(3.0, 0.5)).toBe("C1/C2");
+    expect(findMostUncertainBoundary(3.0)).toBe("C1/C2");
   });
 });
 
