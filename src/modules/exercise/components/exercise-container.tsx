@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/shared/ui/button";
+import { ExerciseFactory } from "@/shared/ui/exercises/exercise-factory";
+import { ExerciseShell } from "@/shared/ui/exercises/exercise-shell";
 import { useExercise } from "../hooks";
-import { ExerciseFactory } from "./exercise-factory";
-import { ExerciseShell } from "./exercise-shell";
 
 interface ExerciseContainerProps {
   /** Optional title shown in the shell header */

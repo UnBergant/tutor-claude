@@ -11,7 +11,7 @@
 | 0 | [Project Foundation & Tooling](phase-0-foundation.md) | ✅ Done |
 | 1 | [Auth, Database & App Shell](phase-1-auth-app-shell.md) | ✅ Done |
 | 2 | [Assessment Engine](phase-2-assessment.md) | ✅ Done |
-| 3 | [Exercise Engine & Curriculum](phase-3-exercises-curriculum.md) | 🔄 In Progress |
+| 3 | [Exercise Engine & Curriculum](phase-3-exercises-curriculum.md) | 🔄 In Progress (3a ✅, 3b ✅, 3c ⏳) |
 | 4 | [Chat with Celestia](phase-4-chat.md) | ⏳ Pending |
 | 5 | [Vocabulary, SRS & Gamification](phase-5-vocabulary.md) | ⏳ Pending |
 | 6 | [Design Polish & Production](phase-6-polish-deploy.md) | ⏳ Pending |

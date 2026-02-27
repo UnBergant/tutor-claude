@@ -16,6 +16,17 @@ Collected during development and testing. Grouped by phase, open items first.
 - [x] **Multiple-choice: missing prepositions/articles around blank** — AI drops required words (e.g., "Cuando ___ la oficina" missing "a"). Fixed: verification rule + explicit example.
 - [x] **Multiple-choice: duplicate options** — AI generated identical options, causing React `key` error. Fixed: prompt + server-side de-duplication + `key={index}`.
 
+## Phase 3b — Lesson Flow (code review findings)
+
+- [ ] **`LessonComplete` gets `lesson.id` as `moduleId` prop** — `lesson-flow.tsx:126` passes `moduleId={lesson.id}` but this is a lesson ID, not module ID. Currently used only as boolean (show/hide "Back to Lessons" button), but semantically wrong. Rename prop to `showBackButton: boolean`.
+- [ ] **`generateLesson` silently drops failed exercises** — `Promise.allSettled` filters out rejected results with no logging. If all exercises fail, lesson is created with empty blocks and `LessonFlow` shows fallback "Loading lesson..." forever. Add logging for rejected promises + guard against zero-exercise blocks.
+- [ ] **Unsafe `metadata` cast in `generateModuleProposals`** — `actions.ts:128-134` casts `assessment.metadata` to `{ result: AssessmentResult }` without null/shape guard. Will throw at runtime if metadata is unexpected. Add validation.
+- [ ] **`queries.ts` missing `import "server-only"`** — exports prisma functions without server-only guard. Risk of accidental client import. Add `import "server-only"` at top.
+- [ ] **No user-visible error on module/lesson generation failure** — `module-selection.tsx` and `module-lesson-list.tsx` catch errors with only `console.error`. User gets no feedback. Add sonner toast notifications.
+- [ ] **`lessonCount: 0` for existing modules** — `generateModuleProposals` returns `lessonCount: 0` for cached modules instead of actual lesson count. Not displayed currently but misleading data.
+- [ ] **`useLesson` hook — `useCallback` with `[store]` doesn't memoize** — `store` object changes reference on every state update, making `useCallback` ineffective. Use `useLessonStore.getState()` inside callbacks or specific action selectors.
+- [ ] **Exercise ordering is global, not per-block** — `generateLesson` gives exercises a global `order: i + 1` across all blocks instead of per-block ordering. Works functionally but semantically incorrect.
+
 ## Phase 6 — Polish & Deploy
 
 - [ ] **Assessment: "Back" button to change answer** — allow the user to go back to the previous question and re-answer it. Requires storing answer history and reverting Bayesian state.

@@ -1,47 +1,29 @@
 "use server";
 
 import { z } from "zod/v4";
-import type {
-  Prisma,
-  ExerciseType as PrismaExerciseType,
-} from "@/generated/prisma";
+import type { Prisma } from "@/generated/prisma";
 import { TOPIC_BY_ID } from "@/shared/data/grammar-topics";
-import { generateStructured } from "@/shared/lib/ai/client";
-import {
-  buildExerciseGapFillPrompt,
-  buildExerciseMultipleChoicePrompt,
-  EXERCISE_GAP_FILL_SCHEMA,
-  EXERCISE_MULTIPLE_CHOICE_SCHEMA,
-  type GeneratedExerciseGapFill,
-  type GeneratedExerciseMultipleChoice,
-} from "@/shared/lib/ai/prompts/exercise";
-import { CELESTIA_SYSTEM_PROMPT } from "@/shared/lib/ai/prompts/system";
-import {
-  hintMatchesAnswer,
-  sanitizeGapFill,
-  sanitizeMultipleChoice,
-} from "@/shared/lib/ai/sanitize";
 import { auth } from "@/shared/lib/auth";
-import { prisma } from "@/shared/lib/prisma";
-import type {
-  ExerciseAttemptResult,
-  ExerciseClientItem,
-  ExerciseType,
-  GapFillContent,
-  MultipleChoiceContent,
-} from "@/shared/types/exercise";
-import type { GrammarTopic } from "@/shared/types/grammar";
 import {
   categorizeMistake,
   checkAnswer,
   describeMistakePattern,
   hasAccentMismatch,
-} from "./lib/answer-check";
+} from "@/shared/lib/exercise/answer-check";
 import {
-  generateWithRetry,
-  validateGapFill,
-  validateMultipleChoice,
-} from "./lib/validation";
+  fromPrismaExerciseType,
+  type GeneratableExerciseType,
+  generateAndValidateExercise,
+  toClientItem,
+  toPrismaExerciseType,
+} from "@/shared/lib/exercise/generation";
+import { prisma } from "@/shared/lib/prisma";
+import type {
+  ExerciseAttemptResult,
+  ExerciseClientItem,
+  GapFillContent,
+  MultipleChoiceContent,
+} from "@/shared/types/exercise";
 
 // ──────────────────────────────────────────────
 // Input validation schemas
@@ -124,9 +106,6 @@ export async function generateExercise(
  * Generate a batch of exercises for a lesson block.
  * More cost-effective than individual calls.
  */
-/** Exercise types currently supported for generation */
-type GeneratableExerciseType = "gap_fill" | "multiple_choice";
-
 export async function generateExerciseBatch(
   topicId: string,
   types: GeneratableExerciseType[],
@@ -341,158 +320,3 @@ export async function getBlockExercises(
     return toClientItem(ex.id, type, content);
   });
 }
-
-// ──────────────────────────────────────────────
-// Internal helpers
-// ──────────────────────────────────────────────
-
-interface GeneratedExerciseResult {
-  content: GapFillContent | MultipleChoiceContent;
-  correctAnswer: string;
-  explanation: string;
-  question: string;
-}
-
-/**
- * Generate and validate a single exercise through the full pipeline.
- * Shared by generateExercise and generateExerciseBatch.
- */
-async function generateAndValidateExercise(
-  type: ExerciseType,
-  topic: GrammarTopic,
-  userId: string,
-): Promise<GeneratedExerciseResult> {
-  if (type === "gap_fill") {
-    const basePrompt = buildExerciseGapFillPrompt(topic);
-    const data = await generateWithRetry(async (previousErrors) => {
-      const userMessage = previousErrors
-        ? `${basePrompt}\n\nIMPORTANT: Your previous attempt was rejected for these reasons: ${previousErrors.join("; ")}. Fix these issues.`
-        : basePrompt;
-      const { data } = await generateStructured<GeneratedExerciseGapFill>({
-        endpoint: "exercise",
-        system: CELESTIA_SYSTEM_PROMPT,
-        userMessage,
-        toolName: "generate_exercise_gap_fill",
-        toolDescription:
-          "Generate a gap-fill exercise for a Spanish grammar lesson",
-        schema: EXERCISE_GAP_FILL_SCHEMA,
-        userId,
-      });
-      return data;
-    }, validateGapFill);
-
-    const sanitized = sanitizeGapFill(data.before, data.after);
-    const content: GapFillContent = {
-      type: "gap_fill",
-      before: sanitized.before,
-      after: sanitized.after,
-      correctAnswer: data.correctAnswer,
-      hint: hintMatchesAnswer(data.hint, data.correctAnswer)
-        ? undefined
-        : data.hint,
-      translation: data.translation,
-      explanation: data.explanation,
-    };
-
-    return {
-      content,
-      correctAnswer: data.correctAnswer,
-      explanation: data.explanation,
-      question: `${sanitized.before}___${sanitized.after}`,
-    };
-  }
-
-  // Multiple choice
-  const basePrompt = buildExerciseMultipleChoicePrompt(topic);
-  const data = await generateWithRetry(async (previousErrors) => {
-    const userMessage = previousErrors
-      ? `${basePrompt}\n\nIMPORTANT: Your previous attempt was rejected for these reasons: ${previousErrors.join("; ")}. Fix these issues.`
-      : basePrompt;
-    const { data } = await generateStructured<GeneratedExerciseMultipleChoice>({
-      endpoint: "exercise",
-      system: CELESTIA_SYSTEM_PROMPT,
-      userMessage,
-      toolName: "generate_exercise_multiple_choice",
-      toolDescription:
-        "Generate a multiple-choice exercise for a Spanish grammar lesson",
-      schema: EXERCISE_MULTIPLE_CHOICE_SCHEMA,
-      userId,
-    });
-    return data;
-  }, validateMultipleChoice);
-
-  const sanitized = sanitizeMultipleChoice(data);
-  const content: MultipleChoiceContent = {
-    type: "multiple_choice",
-    prompt: sanitized.prompt,
-    options: sanitized.options as [string, string, string, string],
-    correctIndex: sanitized.correctIndex,
-    correctAnswer: sanitized.correctAnswer,
-    explanation: sanitized.explanation,
-  };
-
-  return {
-    content,
-    correctAnswer: sanitized.correctAnswer,
-    explanation: sanitized.explanation,
-    question: sanitized.prompt,
-  };
-}
-
-/** Convert lowercase exercise type to Prisma enum */
-function toPrismaExerciseType(type: ExerciseType): PrismaExerciseType {
-  const map: Record<ExerciseType, PrismaExerciseType> = {
-    gap_fill: "GAP_FILL",
-    multiple_choice: "MULTIPLE_CHOICE",
-    match_pairs: "MATCH_PAIRS",
-    reorder_words: "REORDER_WORDS",
-    free_writing: "FREE_WRITING",
-    reading_comprehension: "READING_COMPREHENSION",
-  };
-  return map[type];
-}
-
-/** Convert Prisma enum to lowercase exercise type */
-function fromPrismaExerciseType(type: PrismaExerciseType): ExerciseType {
-  const map: Record<PrismaExerciseType, ExerciseType> = {
-    GAP_FILL: "gap_fill",
-    MULTIPLE_CHOICE: "multiple_choice",
-    MATCH_PAIRS: "match_pairs",
-    REORDER_WORDS: "reorder_words",
-    FREE_WRITING: "free_writing",
-    READING_COMPREHENSION: "reading_comprehension",
-  };
-  return map[type];
-}
-
-/**
- * Convert exercise content to client-safe item (strips correctAnswer).
- */
-function toClientItem(
-  exerciseId: string,
-  type: ExerciseType,
-  content: GapFillContent | MultipleChoiceContent,
-): ExerciseClientItem {
-  if (type === "gap_fill") {
-    const gf = content as GapFillContent;
-    return {
-      exerciseId,
-      type: "gap_fill",
-      before: gf.before,
-      after: gf.after,
-      hint: gf.hint,
-      translation: gf.translation,
-    };
-  }
-
-  const mc = content as MultipleChoiceContent;
-  return {
-    exerciseId,
-    type: "multiple_choice",
-    prompt: mc.prompt,
-    options: [...mc.options],
-  };
-}
-
-// sanitizeGapFill, sanitizeMultipleChoice, hintMatchesAnswer
-// → imported from @/shared/lib/ai/sanitize

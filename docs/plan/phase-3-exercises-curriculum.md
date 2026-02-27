@@ -11,7 +11,7 @@ Full exercise library (all 6 types) + lesson flow + AI-adaptive curriculum. Comp
 | Subphase | Name | Status |
 |----------|------|--------|
 | 3a | Exercise Engine & Feedback System | ✅ Done |
-| 3b | Lesson Flow & Curriculum | ⏳ Pending |
+| 3b | Lesson Flow & Curriculum | ✅ Done |
 | 3c | New Exercise Types | ⏳ Pending |
 
 Dependencies: `3a → 3b → 3c` (3c can be developed in parallel with late 3b, but integration testing requires 3b)
@@ -88,51 +88,79 @@ Standalone exercise engine that runs GapFill/MC sequences with full feedback, an
 
 ---
 
-## Phase 3b: Lesson Flow & Curriculum ⏳
+## Phase 3b: Lesson Flow & Curriculum ✅
 
 Complete learning loop: assessment results → AI proposes modules → user picks → enters lesson → works through blocks → progress saved.
 
-### Steps
+### Completed
 
-1. **Curriculum AI prompts** (`src/shared/lib/ai/prompts/curriculum.ts`)
-   - Module proposal prompt: gap map + user level + learning goal + recent mistakes → 3-4 modules
-   - Lesson generation prompt: module topic + lesson order + prior content → blocks with explanations + exercise specs
-   - Block content prompt: grammar explanation text (Castellano, 2-3 paragraphs)
+1. **Schema migration**
+   - `UserProfile.activeModuleId` — FK to Module (one active module at a time, `onDelete: SetNull`)
+   - `LessonBlock.title` — AI-generated block title (e.g., "Review: Present Tense")
+   - `Module.activeProfiles` — back-relation for the named relation
 
-2. **Lesson Server Actions** (`src/modules/lesson/actions.ts`)
-   - `generateModuleProposals(userId)` — assessment gap map + mistakes + profile → propose modules → persist
-   - `selectModule(moduleId)` — mark active
-   - `generateLesson(moduleId, lessonOrder)` — generate blocks + exercises, persist chain in `$transaction`
-   - `submitLessonExercise(exerciseId, answer)` — delegate to exercise engine + update lesson progress
-   - `completeLesson(lessonId)` — update LessonProgress, compute score, schedule review (1→3→7→30 days)
+2. **Shared extraction (FSD-lite compliance)**
+   - Server-side utils moved to `src/shared/lib/exercise/`: `answer-check.ts`, `validation.ts`, `generation.ts`
+   - `generation.ts` extracts `generateAndValidateExercise()`, `toPrismaExerciseType()`, `fromPrismaExerciseType()`, `toClientItem()`, `exerciseRecordToClientItem()` from exercise actions
+   - UI components moved to `src/shared/ui/exercises/`: `gap-fill.tsx`, `multiple-choice.tsx`, `exercise-shell.tsx`, `exercise-factory.tsx`
+   - Original exercise module files re-export from shared (backwards-compatible)
+   - Assessment `actions.ts` updated to import `checkAnswer` from shared
 
-3. **Lesson Zustand store** (`src/modules/lesson/store.ts`)
-   - Current lesson, current block, block index
-   - Block-level + overall progress
-   - Lesson result/score
+3. **Curriculum AI prompts** (`src/shared/lib/ai/prompts/curriculum.ts`)
+   - `buildModuleProposalPrompt()` — gap map summarized by level + top 10 mistakes + user level/goal → 3-4 modules
+   - `buildLessonGenerationPrompt()` — topic + lesson order + previous topics → 2-3 blocks with explanations + exercise specs
+   - `MODULE_PROPOSAL_SCHEMA`, `LESSON_GENERATION_SCHEMA` — JSON schemas for tool_use
+   - Types: `GeneratedModuleProposal`, `GeneratedLesson`, `GeneratedLessonBlock`
 
-4. **Lesson Flow components** (`src/modules/lesson/components/`)
-   - `LessonFlow` — block progression orchestrator
-   - `LessonBlock` — explanation + exercise sequence via ExerciseContainer
-   - `BlockExplanation` — AI grammar explanation (markdown)
-   - `BlockTransition` — inter-block screen
-   - `LessonComplete` — completion with score + recommendations
+4. **Lesson Server Actions** (`src/modules/lesson/actions.ts`)
+   - `generateModuleProposals()` — load assessment gap map + mistakes → AI proposals → validate topicIds → persist modules
+   - `regenerateModuleProposals()` — clear existing + regenerate
+   - `selectModule(moduleId)` — set `UserProfile.activeModuleId`, auto-generate first lesson if needed
+   - `generateLesson(moduleId, lessonOrder)` — AI lesson structure → persist blocks → parallel exercise generation via `generateAndValidateExercise` → persist exercises
+   - `getLessonDetail(lessonId)` — load lesson with blocks, exercises (as `ExerciseClientItem`), progress
+   - `submitLessonExercise(exerciseId, answer)` — check + categorize + track mistake + mark lesson IN_PROGRESS
+   - `completeLesson(lessonId)` — compute score from attempts, schedule review (interval doubling: 1→3→7→14→30 days), increment `lessonsCompleted`
+   - `generateNextLesson(moduleId)` — generate next lesson in module (max 4)
 
-5. **Module Selection UI** (`src/modules/lesson/components/`)
-   - `ModuleSelection` + `ModuleCard` — proposed modules with title, description, level
-   - "I want something else" regeneration, topic override option
+5. **Lesson queries** (`src/modules/lesson/queries.ts`)
+   - `getActiveModuleWithProgress()`, `getNextLessonForUser()`, `getDueReviews()`, `getMistakeStats()`, `getUserModules()`, `getLatestAssessment()`
 
-6. **Routes**
-   - `src/app/(app)/lesson/[lessonId]/page.tsx` — lesson detail
-   - `src/app/(app)/modules/page.tsx` — module selection
-   - Update `src/app/(app)/lessons/page.tsx` — lesson list for active module
+6. **Lesson Zustand store** (`src/modules/lesson/store.ts`)
+   - Phase machine: `"explanation" | "exercises" | "transition" | "complete"`
+   - Block-level exercise state: `blockExercises`, `currentExerciseIndex`, `exerciseFeedback`
+   - Per-block score tracking: `blockScores: { correct, total }[]`
+   - Actions: `initLesson()`, `startExercises()`, `recordAnswer()`, `advanceExercise()`, `advanceToNextBlock()`, `completeLesson()`
 
-7. **Home Screen** (`src/app/(app)/page.tsx` — rewrite)
-   - Quick Start (continue/start next lesson)
-   - New Topics (module selection link)
-   - Deep Review (weak topics from ExerciseAttempt)
-   - Progress Dashboard (per-topic success %)
-   - Phrase of the Day (placeholder — Phase 5)
+7. **useLesson hook** (`src/modules/lesson/hooks.ts`)
+   - Connects store to server actions with error handling
+   - `handleSubmitAnswer()`, `handleNextExercise()`, `handleStartExercises()`, `handleContinueToNextBlock()`, `handleCompleteLesson()`
+   - Computed: `currentBlock`, `totalBlocks`, `overallScore`, `isLastBlock`
+
+8. **Lesson Flow components** (`src/modules/lesson/components/`)
+   - `LessonFlow` — phase routing: explanation → exercises → transition → complete
+   - `BlockExplanation` — `react-markdown` grammar explanation + REVIEW/NEW_MATERIAL badge + "Start Exercises" button
+   - `BlockTransition` — block score + "Up next" preview + "Continue"
+   - `LessonComplete` — overall score + per-block breakdown + next review date + navigation
+   - `LessonSkeleton` — spinner with "Generating your lesson..." message
+
+9. **Module Selection UI** (`src/modules/lesson/components/`)
+   - `ModuleSelection` — grid of ModuleCards + "I want something else" regeneration
+   - `ModuleCard` — title, description, level Badge, "Start" button
+   - `ModuleLessonList` — lessons within active module with status indicators (✓/→/○), "Generate Next Lesson" button
+
+10. **Routes**
+    - `src/app/(app)/modules/page.tsx` — auth + generate proposals if none + ModuleSelection
+    - `src/app/(app)/lesson/[lessonId]/page.tsx` — auth + load lesson detail + LessonFlow
+    - `src/app/(app)/lessons/page.tsx` — rewritten: active module's lesson list, redirect to /modules if none
+
+11. **Home Screen rewrite** (`src/app/(app)/page.tsx`)
+    - Server component with `Promise.all` for parallel fetching
+    - Quick Start Card — continue lesson or start next (link to `/lesson/[id]`)
+    - New Topics Card — "Explore modules" (link to `/modules`)
+    - Review Due Card — count + links to lessons due for review
+    - Progress Card — per-level mastery % bars from gap map
+
+12. **Sidebar navigation** — added "Modules" link with `GraduationCapIcon`
 
 ---
 
@@ -157,29 +185,54 @@ For each: update ExerciseFactory, types, answer-check, validation, prompts.
 - `src/shared/types/exercise.ts` — expanded type system
 - `src/shared/data/latam-blocklist.ts` — LatAm vocabulary filter
 - `src/shared/lib/ai/prompts/exercise.ts` — lesson-context AI prompts
-- `src/modules/exercise/actions.ts` — exercise server actions
+- `src/modules/exercise/actions.ts` — exercise server actions (imports from shared)
 - `src/modules/exercise/store.ts` — Zustand store
 - `src/modules/exercise/hooks.ts` — useExercise hook
-- `src/modules/exercise/lib/validation.ts` — validation pipeline
-- `src/modules/exercise/lib/answer-check.ts` — shared answer checking + mistake categorization
-- `src/modules/exercise/components/exercise-container.tsx` — container component
-- `src/modules/exercise/components/exercise-factory.tsx` — type-based routing
-- `src/modules/exercise/components/gap-fill.tsx` — updated with animations
-- `src/modules/exercise/components/multiple-choice.tsx` — updated with animations
+- `src/modules/exercise/components/exercise-container.tsx` — container (imports shared UI)
 - `src/app/globals.css` — shake + pulse-once keyframe animations
 
-### Phase 3b (pending)
-- `src/modules/lesson/` — lesson flow, curriculum, actions, store
-- `src/shared/lib/ai/prompts/curriculum.ts` — curriculum AI prompts
-- `src/app/(app)/page.tsx` — home screen rewrite
-- `src/app/(app)/lesson/[lessonId]/page.tsx` — lesson route
+### Phase 3b (done)
+
+**Shared extraction:**
+- `src/shared/lib/exercise/answer-check.ts` — answer checking + mistake categorization (moved from exercise module)
+- `src/shared/lib/exercise/validation.ts` — Zod schemas + validation pipeline (moved)
+- `src/shared/lib/exercise/generation.ts` — exercise generation + type converters + toClientItem (extracted)
+- `src/shared/ui/exercises/gap-fill.tsx` — GapFill component (moved)
+- `src/shared/ui/exercises/multiple-choice.tsx` — MC component (moved)
+- `src/shared/ui/exercises/exercise-shell.tsx` — shell with progress bar (moved)
+- `src/shared/ui/exercises/exercise-factory.tsx` — type-based routing (moved)
+
+**Lesson module:**
+- `src/shared/lib/ai/prompts/curriculum.ts` — module proposal + lesson generation prompts
+- `src/modules/lesson/actions.ts` — 8 server actions
+- `src/modules/lesson/queries.ts` — 6 server-only query helpers
+- `src/modules/lesson/store.ts` — Zustand store with phase machine
+- `src/modules/lesson/hooks.ts` — useLesson hook
+- `src/modules/lesson/components/lesson-flow.tsx` — phase routing orchestrator
+- `src/modules/lesson/components/block-explanation.tsx` — markdown explanation
+- `src/modules/lesson/components/block-transition.tsx` — inter-block score screen
+- `src/modules/lesson/components/lesson-complete.tsx` — completion with scores
+- `src/modules/lesson/components/lesson-skeleton.tsx` — loading spinner
+- `src/modules/lesson/components/module-selection.tsx` — module grid
+- `src/modules/lesson/components/module-card.tsx` — module card
+- `src/modules/lesson/components/module-lesson-list.tsx` — lesson list with status
+
+**Routes & pages:**
 - `src/app/(app)/modules/page.tsx` — module selection route
+- `src/app/(app)/lesson/[lessonId]/page.tsx` — lesson flow route
+- `src/app/(app)/lessons/page.tsx` — rewritten: active module lesson list
+- `src/app/(app)/page.tsx` — rewritten: dashboard with 4 cards
+
+**Modified:**
+- `prisma/schema.prisma` — `UserProfile.activeModuleId`, `LessonBlock.title`
+- `src/modules/assessment/actions.ts` — answer-check import path updated
+- `src/shared/ui/app-sidebar.tsx` — added "Modules" nav item
 
 ### Phase 3c (pending)
-- `src/modules/exercise/components/reorder-words.tsx`
-- `src/modules/exercise/components/match-pairs.tsx`
-- `src/modules/exercise/components/free-writing.tsx`
-- `src/modules/exercise/components/reading-comprehension.tsx`
+- `src/shared/ui/exercises/reorder-words.tsx`
+- `src/shared/ui/exercises/match-pairs.tsx`
+- `src/shared/ui/exercises/free-writing.tsx`
+- `src/shared/ui/exercises/reading-comprehension.tsx`
 
 ## Out of Scope (deferred)
 

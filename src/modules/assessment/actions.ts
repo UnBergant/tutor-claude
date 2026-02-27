@@ -2,7 +2,6 @@
 
 import { z } from "zod/v4";
 import type { Prisma } from "@/generated/prisma";
-import { checkAnswer } from "@/modules/exercise/lib/answer-check";
 import { TOPIC_BY_ID } from "@/shared/data/grammar-topics";
 import { generateStructured } from "@/shared/lib/ai/client";
 import {
@@ -19,6 +18,7 @@ import {
   sanitizeMultipleChoice,
 } from "@/shared/lib/ai/sanitize";
 import { auth } from "@/shared/lib/auth";
+import { checkAnswer } from "@/shared/lib/exercise/answer-check";
 import { prisma } from "@/shared/lib/prisma";
 import type {
   AssessmentItem,
