@@ -4,6 +4,7 @@ import {
   BarChart3Icon,
   BookAIcon,
   BookOpenIcon,
+  GraduationCapIcon,
   HomeIcon,
   MessageCircleIcon,
 } from "lucide-react";
@@ -14,6 +15,7 @@ import { cn } from "@/shared/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/", label: "Home", icon: HomeIcon },
+  { href: "/modules", label: "Modules", icon: GraduationCapIcon },
   { href: "/lessons", label: "Lessons", icon: BookOpenIcon },
   { href: "/chat", label: "Chat", icon: MessageCircleIcon },
   { href: "/vocabulary", label: "Vocabulary", icon: BookAIcon },

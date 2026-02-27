@@ -1,7 +1,10 @@
-# Phase 4: Chat with Celestia
+# Phase 5: Chat with Celestia
 
 ## Goal
 Free chat + situation mode + error correction.
+
+## Scope Change
+Moved from Phase 4 to Phase 5. Chat is an independent feature that reuses AI infrastructure from Phases 2-3. Vocabulary auto-collection from chat sessions feeds into Phase 4 vocabulary.
 
 ## Steps
 
