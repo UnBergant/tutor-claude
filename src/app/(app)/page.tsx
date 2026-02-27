@@ -1,13 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getDueReviews, getNextLessonForUser } from "@/modules/lesson/queries";
+import { computeLevelProgress } from "@/shared/lib/assessment-utils";
 import { auth } from "@/shared/lib/auth";
 import { prisma } from "@/shared/lib/prisma";
-import type {
-  AssessmentResult,
-  TopicAssessment,
-} from "@/shared/types/assessment";
-import type { CEFRLevel } from "@/shared/types/grammar";
+import type { AssessmentResult } from "@/shared/types/assessment";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Progress } from "@/shared/ui/progress";
@@ -177,29 +174,4 @@ export default async function DashboardPage() {
       </div>
     </div>
   );
-}
-
-function computeLevelProgress(
-  gapMap: TopicAssessment[],
-): { level: CEFRLevel; mastered: number; total: number }[] {
-  const levels: CEFRLevel[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
-  const map: Record<string, { mastered: number; total: number }> = {};
-
-  for (const level of levels) {
-    map[level] = { mastered: 0, total: 0 };
-  }
-
-  for (const item of gapMap) {
-    const m = map[item.level];
-    if (m) {
-      m.total++;
-      if (item.status === "mastered") m.mastered++;
-    }
-  }
-
-  return levels.map((level) => ({
-    level,
-    mastered: map[level].mastered,
-    total: map[level].total,
-  }));
 }
