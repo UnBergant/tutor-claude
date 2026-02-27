@@ -2,6 +2,7 @@
 
 import { z } from "zod/v4";
 import type { Prisma } from "@/generated/prisma";
+import { checkAnswer } from "@/modules/exercise/lib/answer-check";
 import { TOPIC_BY_ID } from "@/shared/data/grammar-topics";
 import { generateStructured } from "@/shared/lib/ai/client";
 import {
@@ -413,33 +414,7 @@ async function completeAssessment(
   };
 }
 
-/**
- * Check student answer against correct answer.
- * Case-insensitive, accent-tolerant for gap-fill.
- */
-function checkAnswer(
-  userAnswer: string,
-  correctAnswer: string,
-  exerciseType: "gap_fill" | "multiple_choice",
-): boolean {
-  if (exerciseType === "multiple_choice") {
-    return userAnswer.trim() === correctAnswer.trim();
-  }
-
-  // Gap-fill: case-insensitive, normalize whitespace
-  const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
-
-  const userNorm = normalize(userAnswer);
-  const correctNorm = normalize(correctAnswer);
-
-  if (userNorm === correctNorm) return true;
-
-  // Accent-tolerant: strip accents and compare as fallback
-  const stripAccents = (s: string) =>
-    s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-  return stripAccents(userNorm) === stripAccents(correctNorm);
-}
+// checkAnswer() moved to @/modules/exercise/lib/answer-check.ts (shared)
 
 /**
  * Generate an assessment item using the AI client.

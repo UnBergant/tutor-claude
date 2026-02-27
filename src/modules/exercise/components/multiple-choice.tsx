@@ -36,6 +36,15 @@ export function MultipleChoice({
     onSubmit(options[index], index);
   }
 
+  // In lesson mode, correctIndex may be -1 (hidden from client).
+  // After feedback, find the correct option by matching feedback.correctAnswer.
+  const resolvedCorrectIndex =
+    correctIndex >= 0
+      ? correctIndex
+      : feedback
+        ? options.indexOf(feedback.correctAnswer)
+        : -1;
+
   return (
     <div className="space-y-4">
       <p className="text-lg leading-relaxed">{prompt}</p>
@@ -43,7 +52,7 @@ export function MultipleChoice({
       <div className="grid gap-2">
         {options.map((option, index) => {
           const isSelected = selectedIndex === index;
-          const isCorrect = index === correctIndex;
+          const isCorrect = index === resolvedCorrectIndex;
           const showResult = feedback !== null;
 
           return (
@@ -53,14 +62,14 @@ export function MultipleChoice({
               disabled={disabled || showResult}
               onClick={() => handleSelect(index)}
               className={cn(
-                "h-auto min-h-11 px-4 py-3 text-left justify-start text-base font-normal whitespace-normal",
+                "h-auto min-h-11 px-4 py-3 text-left justify-start text-base font-normal whitespace-normal transition-all duration-300",
                 showResult &&
                   isCorrect &&
-                  "border-green-500 bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700",
+                  "border-green-500 bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700 animate-pulse-once",
                 showResult &&
                   isSelected &&
                   !isCorrect &&
-                  "border-red-500 bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-300 dark:border-red-700",
+                  "border-red-500 bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-300 dark:border-red-700 animate-shake",
               )}
             >
               <span className="mr-2 font-medium text-muted-foreground">
@@ -76,7 +85,7 @@ export function MultipleChoice({
       {feedback && (
         <div
           className={cn(
-            "rounded-lg p-3 text-sm",
+            "rounded-lg p-3 text-sm animate-in fade-in slide-in-from-bottom-2 duration-300",
             feedback.isCorrect
               ? "bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-300"
               : "bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-300",

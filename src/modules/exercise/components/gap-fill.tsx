@@ -38,9 +38,12 @@ export function GapFill({
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Reset value when exercise changes (before/after change = new exercise)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional reset on exercise identity change
   useEffect(() => {
+    setValue("");
     inputRef.current?.focus();
-  }, []);
+  }, [before, after]);
 
   function handleSubmit() {
     const trimmed = value.trim();
@@ -64,10 +67,10 @@ export function GapFill({
         {feedback ? (
           <span
             className={cn(
-              "inline-block mx-1 px-2 py-0.5 rounded font-semibold",
+              "inline-block mx-1 px-2 py-0.5 rounded font-semibold transition-all duration-300",
               feedback.isCorrect
-                ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+                ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 animate-pulse-once"
+                : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 animate-shake",
             )}
           >
             {feedback.isCorrect ? value : feedback.correctAnswer}
@@ -100,7 +103,7 @@ export function GapFill({
       {feedback && (
         <div
           className={cn(
-            "rounded-lg p-3 text-sm",
+            "rounded-lg p-3 text-sm animate-in fade-in slide-in-from-bottom-2 duration-300",
             feedback.isCorrect
               ? "bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-300"
               : "bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-300",
