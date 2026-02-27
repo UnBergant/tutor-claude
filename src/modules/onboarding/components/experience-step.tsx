@@ -80,9 +80,9 @@ export function ExperienceStep() {
               variant="outline"
               onClick={() => handleSelect(option.value)}
               className={cn(
-                "h-auto min-h-14 px-4 py-3 text-left justify-start whitespace-normal",
+                "h-auto min-h-14 px-4 py-3 text-left justify-start whitespace-normal hover:bg-primary/15 hover:text-foreground dark:hover:bg-primary/20",
                 experienceLevel === option.value &&
-                  "border-primary bg-primary/5 ring-1 ring-primary",
+                  "border-primary bg-primary/10 ring-1 ring-primary",
               )}
             >
               <div>
