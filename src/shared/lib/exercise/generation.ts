@@ -279,6 +279,7 @@ async function generateMatchPairs(
   const content: MatchPairsContent = {
     type: "match_pairs",
     pairs: sortedPairs,
+    shuffledRightItems: shuffleUntilDifferent(sortedPairs.map((p) => p.right)),
     explanation: data.explanation,
   };
 
@@ -436,13 +437,13 @@ export function toClientItem(
     }
     case "match_pairs": {
       const mp = content as MatchPairsContent;
-      const leftItems = mp.pairs.map((p) => p.left);
-      const rightItems = shuffleUntilDifferent(mp.pairs.map((p) => p.right));
       return {
         exerciseId,
         type: "match_pairs",
-        leftItems,
-        rightItems,
+        leftItems: mp.pairs.map((p) => p.left),
+        rightItems:
+          mp.shuffledRightItems ??
+          shuffleUntilDifferent(mp.pairs.map((p) => p.right)),
       };
     }
     case "free_writing": {

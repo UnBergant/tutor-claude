@@ -53,6 +53,8 @@ export interface MultipleChoiceContent {
 export interface MatchPairsContent {
   type: "match_pairs";
   pairs: { left: string; right: string }[];
+  /** Right items in shuffled order (stored at generation time for determinism) */
+  shuffledRightItems: string[];
   explanation: string;
 }
 

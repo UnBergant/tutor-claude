@@ -61,7 +61,12 @@ export function ReadingComprehension({
           return answers.map((a, i) => {
             if (!a) return false;
             const normalize = (s: string) =>
-              s.trim().toLowerCase().replace(/\s+/g, " ");
+              s
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, " ")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "");
             return normalize(a) === normalize(correctAnswers[i]);
           });
         } catch {
