@@ -293,6 +293,18 @@
 .stagger-fade-in > *:nth-child(6) {
   animation-delay: 300ms;
 }
+.stagger-fade-in > *:nth-child(7) {
+  animation-delay: 360ms;
+}
+.stagger-fade-in > *:nth-child(8) {
+  animation-delay: 420ms;
+}
+.stagger-fade-in > *:nth-child(9) {
+  animation-delay: 480ms;
+}
+.stagger-fade-in > *:nth-child(10) {
+  animation-delay: 540ms;
+}
 
 /* Respects reduced motion preference */
 @media (prefers-reduced-motion: reduce) {

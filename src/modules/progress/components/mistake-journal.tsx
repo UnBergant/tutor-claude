@@ -116,7 +116,9 @@ export function MistakeJournal({
                 </span>
                 {CATEGORY_LABELS[cat]}
                 <span className="text-muted-foreground font-normal">
-                  ({totalCount} mistake{totalCount !== 1 ? "s" : ""})
+                  ({catEntries.length} pattern
+                  {catEntries.length !== 1 ? "s" : ""} &middot; {totalCount}{" "}
+                  total)
                 </span>
               </CardTitle>
             </CardHeader>
