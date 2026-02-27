@@ -136,7 +136,13 @@ Requirements:
     - Explain the rule clearly for a ${ctx.userLevel} student
     - Use Castellano forms (vosotros, distinción, Peninsular vocabulary)
   - exerciseCount: how many exercises for this block (2-4)
-  - exerciseTypes: array of "gap_fill" and/or "multiple_choice"
+  - exerciseTypes: array of exercise types to use for this block. Choose from:
+    - "gap_fill": fill in the blank — best for conjugation, agreement, prepositions
+    - "multiple_choice": choose the correct option — good for recognition tasks
+    - "reorder_words": rearrange words into correct order — tests sentence structure and word order
+    - "match_pairs": match items in two columns — ideal for vocabulary, conjugation tables, ser/estar
+    - "free_writing": write 1-3 sentences — B1+ only, max 1 per lesson, tests production skills
+    - "reading_comprehension": read a passage and answer questions — B1+ only, tests integrated understanding
 
 Keep explanations focused and practical — students want to practice, not read textbooks.`;
 }
@@ -212,7 +218,17 @@ export const LESSON_GENERATION_SCHEMA = {
           },
           exerciseTypes: {
             type: "array",
-            items: { type: "string", enum: ["gap_fill", "multiple_choice"] },
+            items: {
+              type: "string",
+              enum: [
+                "gap_fill",
+                "multiple_choice",
+                "reorder_words",
+                "match_pairs",
+                "free_writing",
+                "reading_comprehension",
+              ],
+            },
             minItems: 1,
             description: "Types of exercises for this block",
           },
@@ -252,7 +268,14 @@ export interface GeneratedLessonBlock {
   title: string;
   explanation: string;
   exerciseCount: number;
-  exerciseTypes: ("gap_fill" | "multiple_choice")[];
+  exerciseTypes: (
+    | "gap_fill"
+    | "multiple_choice"
+    | "reorder_words"
+    | "match_pairs"
+    | "free_writing"
+    | "reading_comprehension"
+  )[];
 }
 
 export interface GeneratedLesson {

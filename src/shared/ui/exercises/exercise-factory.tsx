@@ -4,8 +4,12 @@ import type {
   ExerciseClientItem,
   ExerciseFeedback,
 } from "@/shared/types/exercise";
+import { FreeWriting } from "./free-writing";
 import { GapFill } from "./gap-fill";
+import { MatchPairs } from "./match-pairs";
 import { MultipleChoice } from "./multiple-choice";
+import { ReadingComprehension } from "./reading-comprehension";
+import { ReorderWords } from "./reorder-words";
 
 interface ExerciseFactoryProps {
   exercise: ExerciseClientItem;
@@ -51,15 +55,47 @@ export function ExerciseFactory({
         />
       );
 
-    // Phase 3c stubs — will be implemented later
-    case "match_pairs":
     case "reorder_words":
+      return (
+        <ReorderWords
+          words={exercise.words}
+          translation={exercise.translation}
+          feedback={feedback}
+          onSubmit={onSubmit}
+          disabled={disabled}
+        />
+      );
+
+    case "match_pairs":
+      return (
+        <MatchPairs
+          leftItems={exercise.leftItems}
+          rightItems={exercise.rightItems}
+          feedback={feedback}
+          onSubmit={onSubmit}
+          disabled={disabled}
+        />
+      );
+
     case "free_writing":
+      return (
+        <FreeWriting
+          writingPrompt={exercise.writingPrompt}
+          feedback={feedback}
+          onSubmit={onSubmit}
+          disabled={disabled}
+        />
+      );
+
     case "reading_comprehension":
       return (
-        <div className="text-muted-foreground text-center py-8">
-          Exercise type &quot;{exercise.type}&quot; is coming soon.
-        </div>
+        <ReadingComprehension
+          passage={exercise.passage}
+          questions={exercise.questions}
+          feedback={feedback}
+          onSubmit={onSubmit}
+          disabled={disabled}
+        />
       );
 
     default:

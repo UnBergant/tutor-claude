@@ -182,7 +182,8 @@ export interface ExerciseClientMultipleChoice extends ExerciseClientBase {
 
 export interface ExerciseClientMatchPairs extends ExerciseClientBase {
   type: "match_pairs";
-  pairs: { left: string; right: string }[];
+  leftItems: string[];
+  rightItems: string[]; // shuffled server-side
 }
 
 export interface ExerciseClientReorderWords extends ExerciseClientBase {
@@ -196,8 +197,15 @@ export interface ExerciseClientFreeWriting extends ExerciseClientBase {
   writingPrompt: string;
 }
 
+/** Client-safe reading question (correctAnswer & explanation stripped) */
+export interface ReadingClientQuestion {
+  type: "multiple_choice" | "gap_fill" | "true_false";
+  prompt: string;
+  options?: string[];
+}
+
 export interface ExerciseClientReadingComprehension extends ExerciseClientBase {
   type: "reading_comprehension";
   passage: string;
-  questions: ReadingQuestion[];
+  questions: ReadingClientQuestion[];
 }

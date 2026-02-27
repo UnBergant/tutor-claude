@@ -12,7 +12,7 @@ Full exercise library (all 6 types) + lesson flow + AI-adaptive curriculum. Comp
 |----------|------|--------|
 | 3a | Exercise Engine & Feedback System | ✅ Done |
 | 3b | Lesson Flow & Curriculum | ✅ Done |
-| 3c | New Exercise Types | ⏳ Pending |
+| 3c | New Exercise Types | ✅ Done |
 
 Dependencies: `3a → 3b → 3c` (3c can be developed in parallel with late 3b, but integration testing requires 3b)
 
@@ -164,18 +164,30 @@ Complete learning loop: assessment results → AI proposes modules → user pick
 
 ---
 
-## Phase 3c: New Exercise Types ⏳
+## Phase 3c: New Exercise Types ✅
 
 All 6 exercise types working in the engine and lesson flow.
 
-### Build order (simplest → most complex)
+### Completed
 
-1. **ReorderWords** — shuffled word chips, tap to place in order
-2. **MatchPairs** — two columns, tap-to-select pairing
-3. **FreeWriting** — AI evaluation via Claude Haiku
-4. **ReadingComprehension** — passage + nested questions (MC/GapFill/TrueFalse)
+1. **Client type safety** — `ExerciseClientMatchPairs` now exposes `leftItems[]`/`rightItems[]` (shuffled server-side) instead of leaking `pairs`. `ExerciseClientReadingComprehension` uses `ReadingClientQuestion` (correctAnswer/explanation stripped).
 
-For each: update ExerciseFactory, types, answer-check, validation, prompts.
+2. **Shared infrastructure expansion**
+   - `generation.ts`: `shuffleUntilDifferent()` (Fisher-Yates + ensures different from original), `toClientItem()` handles all 6 types, `exerciseRecordToClientItem()` casts to full `ExerciseContent`, switch-based `generateAndValidateExercise()` with per-type generator functions
+   - `validation.ts`: 4 new Zod schemas + validators (`reorderWordsSchema`, `matchPairsSchema`, `freeWritingSchema`, `readingComprehensionSchema`). MatchPairs validates no duplicate left/right items. RC validates per-question option counts.
+   - `answer-check.ts`: Map-based `matchPairsAnswer()` (tolerates JSON key ordering), `matchReadingComprehensionAnswer()` (all-or-nothing, accent-tolerant per sub-answer). Updated `categorizeMistake()`: match_pairs → VOCABULARY, reading_comprehension → GRAMMAR.
+   - `curriculum.ts`: exerciseTypes enum expanded to all 6 types in schema + `GeneratedLessonBlock` type. `buildLessonGenerationPrompt()` updated with type-selection guidance.
+   - `exercise/actions.ts`: schemas accept all 6 types, answer max increased to 5000 (FreeWriting/RC JSON), content cast to `ExerciseContent`.
+
+3. **ReorderWords** — `buildExerciseReorderWordsPrompt()` generates 4-8 word sentence. Words stored pre-shuffled via `shuffleUntilDifferent()`. UI: sentence area (placed chips) + word pool (available chips). Tap pool → append to sentence, tap sentence → return to pool. Answer checking via accent-tolerant `matchTextAnswer()`.
+
+4. **MatchPairs** — `buildExerciseMatchPairsPrompt()` generates 4-5 pairs. Correct answer stored as sorted JSON. Client receives separate `leftItems`/`rightItems` (right shuffled). UI: two columns, tap left then right to create color-coded pairs (5-color palette). Tap matched pair to undo. Submit when all matched. Map-based answer comparison.
+
+5. **FreeWriting** — `buildExerciseFreeWritingPrompt()` generates prompt + sampleAnswer. New `evaluation.ts` with `evaluateFreeWriting()` — uses `generateStructured()` with "evaluation" endpoint (Haiku). `buildFreeWritingEvaluationPrompt()` returns corrections[], overallFeedback, score, mistakeCategory. Submission flow branches in both `submitLessonExercise` and `submitExerciseAnswer` — AI evaluation instead of deterministic `checkAnswer()`. UI: textarea (min 10 chars) + structured feedback display.
+
+6. **ReadingComprehension** — `buildExerciseReadingComprehensionPrompt()` generates 100-200 word passage + 2-3 questions (MC/gap_fill/true_false). Correct answer stored as JSON array. UI: scrollable passage card + numbered sub-questions with inline renderers (MCSubQuestion, TrueFalseSubQuestion, GapFillSubQuestion). "Submit All" when all answered. Per-question green/red indicators after feedback.
+
+7. **ExerciseFactory updated** — all 4 stubs replaced with real components.
 
 ---
 
@@ -228,11 +240,25 @@ For each: update ExerciseFactory, types, answer-check, validation, prompts.
 - `src/modules/assessment/actions.ts` — answer-check import path updated
 - `src/shared/ui/app-sidebar.tsx` — added "Modules" nav item
 
-### Phase 3c (pending)
-- `src/shared/ui/exercises/reorder-words.tsx`
-- `src/shared/ui/exercises/match-pairs.tsx`
-- `src/shared/ui/exercises/free-writing.tsx`
-- `src/shared/ui/exercises/reading-comprehension.tsx`
+### Phase 3c (done)
+
+**New files:**
+- `src/shared/ui/exercises/reorder-words.tsx` — tap-to-select word chips
+- `src/shared/ui/exercises/match-pairs.tsx` — two-column tap pairing with color palette
+- `src/shared/ui/exercises/free-writing.tsx` — textarea with structured AI feedback
+- `src/shared/ui/exercises/reading-comprehension.tsx` — passage + nested sub-questions
+- `src/shared/lib/exercise/evaluation.ts` — AI-based free-writing evaluation
+
+**Modified:**
+- `src/shared/types/exercise.ts` — client type safety fixes
+- `src/shared/lib/exercise/generation.ts` — all 6 types, shuffle helper, expanded toClientItem
+- `src/shared/lib/exercise/validation.ts` — 4 new schemas + validators
+- `src/shared/lib/exercise/answer-check.ts` — Map-based match_pairs + all-or-nothing RC
+- `src/shared/lib/ai/prompts/exercise.ts` — 4 generation prompts + evaluation prompt + schemas
+- `src/shared/lib/ai/prompts/curriculum.ts` — exerciseTypes expansion
+- `src/shared/ui/exercises/exercise-factory.tsx` — all stubs replaced
+- `src/modules/exercise/actions.ts` — schemas, content cast, free_writing evaluation branch
+- `src/modules/lesson/actions.ts` — free_writing AI evaluation in submitLessonExercise
 
 ## Out of Scope (deferred)
 

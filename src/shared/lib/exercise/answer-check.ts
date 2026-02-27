@@ -26,18 +26,61 @@ export function checkAnswer(
       return matchTextAnswer(userAnswer, correctAnswer);
 
     case "match_pairs":
-      // Match pairs uses JSON-encoded answer for comparison
-      return userAnswer.trim() === correctAnswer.trim();
+      return matchPairsAnswer(userAnswer, correctAnswer);
 
     case "free_writing":
       // Free writing uses AI evaluation, not string matching
       return false;
 
     case "reading_comprehension":
-      return userAnswer.trim() === correctAnswer.trim();
+      return matchReadingComprehensionAnswer(userAnswer, correctAnswer);
 
     default:
       return false;
+  }
+}
+
+/**
+ * Match-pairs answer comparison: parse JSON arrays, build Map(left→right), compare.
+ * More robust than exact JSON string match — tolerates key ordering differences.
+ */
+function matchPairsAnswer(userAnswer: string, correctAnswer: string): boolean {
+  try {
+    const userPairs = JSON.parse(userAnswer) as {
+      left: string;
+      right: string;
+    }[];
+    const correctPairs = JSON.parse(correctAnswer) as {
+      left: string;
+      right: string;
+    }[];
+
+    if (userPairs.length !== correctPairs.length) return false;
+
+    const correctMap = new Map(correctPairs.map((p) => [p.left, p.right]));
+    return userPairs.every((p) => correctMap.get(p.left) === p.right);
+  } catch {
+    return userAnswer.trim() === correctAnswer.trim();
+  }
+}
+
+/**
+ * Reading comprehension answer: all sub-answers must be correct (all-or-nothing).
+ * Each sub-answer is compared with accent-tolerant text matching.
+ */
+function matchReadingComprehensionAnswer(
+  userAnswer: string,
+  correctAnswer: string,
+): boolean {
+  try {
+    const userAnswers = JSON.parse(userAnswer) as string[];
+    const correctAnswers = JSON.parse(correctAnswer) as string[];
+
+    if (userAnswers.length !== correctAnswers.length) return false;
+
+    return userAnswers.every((ua, i) => matchTextAnswer(ua, correctAnswers[i]));
+  } catch {
+    return userAnswer.trim() === correctAnswer.trim();
   }
 }
 
@@ -99,8 +142,15 @@ export function categorizeMistake(
   }
 
   if (exerciseType === "reorder_words") {
-    // Reorder exercises are always word order mistakes
     return "WORD_ORDER";
+  }
+
+  if (exerciseType === "match_pairs") {
+    return "VOCABULARY";
+  }
+
+  if (exerciseType === "reading_comprehension") {
+    return "GRAMMAR";
   }
 
   const userWords = userAnswer.trim().toLowerCase().split(/\s+/);

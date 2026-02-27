@@ -10,9 +10,9 @@ import {
   describeMistakePattern,
   hasAccentMismatch,
 } from "@/shared/lib/exercise/answer-check";
+import { evaluateFreeWriting } from "@/shared/lib/exercise/evaluation";
 import {
   fromPrismaExerciseType,
-  type GeneratableExerciseType,
   generateAndValidateExercise,
   toClientItem,
   toPrismaExerciseType,
@@ -21,24 +21,34 @@ import { prisma } from "@/shared/lib/prisma";
 import type {
   ExerciseAttemptResult,
   ExerciseClientItem,
-  GapFillContent,
-  MultipleChoiceContent,
+  ExerciseContent,
+  ExerciseType,
+  FreeWritingContent,
 } from "@/shared/types/exercise";
 
 // ──────────────────────────────────────────────
 // Input validation schemas
 // ──────────────────────────────────────────────
 
+const exerciseTypeEnum = z.enum([
+  "gap_fill",
+  "multiple_choice",
+  "reorder_words",
+  "match_pairs",
+  "free_writing",
+  "reading_comprehension",
+]);
+
 const generateExerciseSchema = z.object({
   topicId: z.string().min(1),
-  type: z.enum(["gap_fill", "multiple_choice"]),
+  type: exerciseTypeEnum,
   lessonId: z.string().min(1),
   lessonBlockId: z.string().optional(),
 });
 
 const generateBatchSchema = z.object({
   topicId: z.string().min(1),
-  types: z.array(z.enum(["gap_fill", "multiple_choice"])),
+  types: z.array(exerciseTypeEnum),
   lessonBlockId: z.string().min(1),
   lessonId: z.string().min(1),
   count: z.number().int().min(1).max(10),
@@ -46,7 +56,7 @@ const generateBatchSchema = z.object({
 
 const submitAnswerSchema = z.object({
   exerciseId: z.string().min(1),
-  answer: z.string().min(1).max(1000),
+  answer: z.string().min(1).max(5000),
 });
 
 const reportErrorSchema = z.object({
@@ -64,7 +74,7 @@ const reportErrorSchema = z.object({
  */
 export async function generateExercise(
   topicId: string,
-  type: GeneratableExerciseType,
+  type: ExerciseType,
   lessonId: string,
   lessonBlockId?: string,
 ): Promise<ExerciseClientItem> {
@@ -108,7 +118,7 @@ export async function generateExercise(
  */
 export async function generateExerciseBatch(
   topicId: string,
-  types: GeneratableExerciseType[],
+  types: ExerciseType[],
   lessonBlockId: string,
   lessonId: string,
   count: number,
@@ -188,6 +198,60 @@ export async function submitExerciseAnswer(
   }
 
   const exerciseType = fromPrismaExerciseType(exercise.type);
+  const topicId = exercise.lesson.topicId;
+
+  // Free writing uses AI evaluation instead of deterministic checking
+  if (exerciseType === "free_writing") {
+    const content = exercise.content as unknown as FreeWritingContent;
+    const topic = TOPIC_BY_ID.get(topicId);
+    const evaluation = await evaluateFreeWriting(
+      content.prompt,
+      content.sampleAnswer ?? "",
+      answer,
+      topic?.title ?? topicId,
+      topic?.level ?? "A1",
+      userId,
+    );
+
+    const feedbackParts: string[] = [];
+    if (evaluation.overallFeedback) {
+      feedbackParts.push(evaluation.overallFeedback);
+    }
+    if (evaluation.corrections.length > 0) {
+      feedbackParts.push(
+        ...evaluation.corrections.map(
+          (c) => `"${c.original}" → "${c.corrected}": ${c.explanation}`,
+        ),
+      );
+    }
+    if (content.sampleAnswer) {
+      feedbackParts.push(`Sample answer: ${content.sampleAnswer}`);
+    }
+
+    const mistakeCategory = evaluation.isCorrect
+      ? null
+      : (evaluation.mistakeCategory as "GRAMMAR" | "VOCABULARY" | "WORD_ORDER");
+
+    await prisma.exerciseAttempt.create({
+      data: {
+        userId,
+        exerciseId,
+        userAnswer: answer,
+        isCorrect: evaluation.isCorrect,
+        category: mistakeCategory,
+        feedback: feedbackParts.join("\n"),
+      },
+    });
+
+    return {
+      isCorrect: evaluation.isCorrect,
+      correctAnswer: content.sampleAnswer ?? "",
+      explanation: feedbackParts.join("\n"),
+      mistakeCategory,
+      retryTopicId: !evaluation.isCorrect ? topicId : undefined,
+    };
+  }
+
   const isCorrect = checkAnswer(answer, exercise.correctAnswer, exerciseType);
 
   const mistakeCategory = isCorrect
@@ -210,7 +274,6 @@ export async function submitExerciseAnswer(
 
   // Track mistake patterns for curriculum adaptation
   if (!isCorrect && mistakeCategory) {
-    const topicId = exercise.lesson.topicId;
     const pattern = describeMistakePattern(
       answer,
       exercise.correctAnswer,
@@ -258,7 +321,7 @@ export async function submitExerciseAnswer(
       ? `${accentWarning}\n\n${exercise.explanation ?? ""}`
       : (exercise.explanation ?? ""),
     mistakeCategory,
-    retryTopicId: !isCorrect ? exercise.lesson.topicId : undefined,
+    retryTopicId: !isCorrect ? topicId : undefined,
   };
 }
 
@@ -314,9 +377,7 @@ export async function getBlockExercises(
 
   return exercises.map((ex) => {
     const type = fromPrismaExerciseType(ex.type);
-    const content = ex.content as unknown as
-      | GapFillContent
-      | MultipleChoiceContent;
+    const content = ex.content as unknown as ExerciseContent;
     return toClientItem(ex.id, type, content);
   });
 }

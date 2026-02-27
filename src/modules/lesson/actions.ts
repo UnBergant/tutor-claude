@@ -19,10 +19,10 @@ import {
   describeMistakePattern,
   hasAccentMismatch,
 } from "@/shared/lib/exercise/answer-check";
+import { evaluateFreeWriting } from "@/shared/lib/exercise/evaluation";
 import {
   exerciseRecordToClientItem,
   fromPrismaExerciseType,
-  type GeneratableExerciseType,
   generateAndValidateExercise,
   toPrismaExerciseType,
 } from "@/shared/lib/exercise/generation";
@@ -31,6 +31,7 @@ import type { AssessmentResult } from "@/shared/types/assessment";
 import type {
   ExerciseAttemptResult,
   ExerciseClientItem,
+  FreeWritingContent,
 } from "@/shared/types/exercise";
 import type { CEFRLevel } from "@/shared/types/grammar";
 import { getLatestAssessment, getMistakeStats } from "./queries";
@@ -370,7 +371,7 @@ export async function generateLesson(
     const blockData = lessonData.blocks[blockIdx];
     if (!blockData) return [];
 
-    const types = blockData.exerciseTypes as GeneratableExerciseType[];
+    const types = blockData.exerciseTypes;
     const count = blockData.exerciseCount;
 
     return Array.from({ length: count }, (_, i) => ({
@@ -516,6 +517,94 @@ export async function submitLessonExercise(
   }
 
   const exerciseType = fromPrismaExerciseType(exercise.type);
+  const topicId = exercise.lesson.topicId;
+  const topic = TOPIC_BY_ID.get(topicId);
+
+  // Free writing uses AI evaluation instead of deterministic checking
+  if (exerciseType === "free_writing") {
+    const content = exercise.content as unknown as FreeWritingContent;
+    const evaluation = await evaluateFreeWriting(
+      content.prompt,
+      content.sampleAnswer ?? "",
+      answer,
+      topic?.title ?? topicId,
+      topic?.level ?? "A1",
+      userId,
+    );
+
+    const feedbackParts: string[] = [];
+    if (evaluation.overallFeedback) {
+      feedbackParts.push(evaluation.overallFeedback);
+    }
+    if (evaluation.corrections.length > 0) {
+      feedbackParts.push(
+        ...evaluation.corrections.map(
+          (c) => `"${c.original}" → "${c.corrected}": ${c.explanation}`,
+        ),
+      );
+    }
+    if (content.sampleAnswer) {
+      feedbackParts.push(`Sample answer: ${content.sampleAnswer}`);
+    }
+
+    const mistakeCategory = evaluation.isCorrect
+      ? null
+      : (evaluation.mistakeCategory as "GRAMMAR" | "VOCABULARY" | "WORD_ORDER");
+
+    const operations: Prisma.PrismaPromise<unknown>[] = [
+      prisma.exerciseAttempt.create({
+        data: {
+          userId,
+          exerciseId,
+          userAnswer: answer,
+          isCorrect: evaluation.isCorrect,
+          category: mistakeCategory,
+          feedback: feedbackParts.join("\n"),
+        },
+      }),
+      prisma.lessonProgress.updateMany({
+        where: { userId, lessonId: exercise.lessonId, status: "NOT_STARTED" },
+        data: { status: "IN_PROGRESS" },
+      }),
+    ];
+
+    if (!evaluation.isCorrect && mistakeCategory) {
+      operations.push(
+        prisma.mistakeEntry.upsert({
+          where: {
+            userId_relatedTopicId_category: {
+              userId,
+              relatedTopicId: topicId,
+              category: mistakeCategory,
+            },
+          },
+          create: {
+            userId,
+            category: mistakeCategory,
+            pattern: `free_writing: ${evaluation.overallFeedback.slice(0, 100)}`,
+            relatedTopicId: topicId,
+            count: 1,
+          },
+          update: {
+            count: { increment: 1 },
+            pattern: `free_writing: ${evaluation.overallFeedback.slice(0, 100)}`,
+            lastOccurred: new Date(),
+          },
+        }),
+      );
+    }
+
+    await prisma.$transaction(operations);
+
+    return {
+      isCorrect: evaluation.isCorrect,
+      correctAnswer: content.sampleAnswer ?? "",
+      explanation: feedbackParts.join("\n"),
+      mistakeCategory,
+      retryTopicId: !evaluation.isCorrect ? topicId : undefined,
+    };
+  }
+
   const isCorrect = checkAnswer(answer, exercise.correctAnswer, exerciseType);
 
   const mistakeCategory = isCorrect
@@ -537,7 +626,6 @@ export async function submitLessonExercise(
 
   // Track mistake patterns
   if (!isCorrect && mistakeCategory) {
-    const topicId = exercise.lesson.topicId;
     const pattern = describeMistakePattern(
       answer,
       exercise.correctAnswer,
@@ -596,7 +684,7 @@ export async function submitLessonExercise(
       ? `${accentWarning}\n\n${exercise.explanation ?? ""}`
       : (exercise.explanation ?? ""),
     mistakeCategory,
-    retryTopicId: !isCorrect ? exercise.lesson.topicId : undefined,
+    retryTopicId: !isCorrect ? topicId : undefined,
   };
 }
 
