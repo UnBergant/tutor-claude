@@ -125,26 +125,22 @@ ${reviewClause}
 Requirements:
 - Generate a lesson title (short, descriptive, in English)
 - Generate a brief description (1 sentence, English)
-- Generate 2-3 blocks:
-  ${isFirstLesson ? "- 1-2 NEW_MATERIAL blocks" : "- 1 REVIEW block (first), then 1-2 NEW_MATERIAL blocks"}
+- Generate exactly 2 blocks:
+  ${isFirstLesson ? "- 2 NEW_MATERIAL blocks" : "- 1 REVIEW block (first), then 1 NEW_MATERIAL block"}
 - Each block needs:
   - type: "REVIEW" or "NEW_MATERIAL"
   - title: short block title in English (e.g., "Review: Present Tense Basics", "New: Irregular Verbs")
-  - explanation: grammar explanation in Markdown format (English text, Spanish examples)
-    - Use headers, bullet points, bold, and code blocks for Spanish examples
-    - Include 3-5 example sentences with translations
-    - Explain the rule clearly for a ${ctx.userLevel} student
-    - Use Castellano forms (vosotros, distinción, Peninsular vocabulary)
-  - exerciseCount: how many exercises for this block (2-4)
-  - exerciseTypes: array of exercise types to use for this block. Choose from:
-    - "gap_fill": fill in the blank — best for conjugation, agreement, prepositions
-    - "multiple_choice": choose the correct option — good for recognition tasks
-    - "reorder_words": rearrange words into correct order — tests sentence structure and word order
-    - "match_pairs": match items in two columns — ideal for vocabulary, conjugation tables, ser/estar
-    - "free_writing": write 1-3 sentences — B1+ only, max 1 per lesson, tests production skills
-    - "reading_comprehension": read a passage and answer questions — B1+ only, tests integrated understanding
+  - explanation: CONCISE grammar explanation in Markdown (keep under 150 words per block)
+    - 2-3 example sentences with translations, use Castellano forms
+  - exerciseCount: 1 or 2 exercises for this block
+  - exerciseTypes: array from: "gap_fill", "multiple_choice", "reorder_words", "match_pairs"
+    - "free_writing" and "reading_comprehension": B1+ only, max 1 per lesson
 
-Keep explanations focused and practical — students want to practice, not read textbooks.`;
+Formatting rules for explanations:
+- Use Markdown tables for conjugation/grammar tables (with proper | header | separators)
+- Do NOT use bold (**) inside table cells — keep tables clean and uniform
+- Use bold only for key grammar terms in prose text
+- Keep the entire response short. Explanations must be concise — students want to practice, not read.`;
 }
 
 // ──────────────────────────────────────────────
@@ -212,8 +208,8 @@ export const LESSON_GENERATION_SCHEMA = {
           },
           exerciseCount: {
             type: "integer",
-            minimum: 2,
-            maximum: 4,
+            minimum: 1,
+            maximum: 2,
             description: "Number of exercises",
           },
           exerciseTypes: {
@@ -242,7 +238,7 @@ export const LESSON_GENERATION_SCHEMA = {
         ],
       },
       minItems: 2,
-      maxItems: 3,
+      maxItems: 2,
       description: "Lesson blocks (REVIEW + NEW_MATERIAL)",
     },
   },

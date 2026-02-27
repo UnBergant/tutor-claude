@@ -5,7 +5,7 @@ let client: Anthropic | null = null;
 
 function getClient(): Anthropic {
   if (!client) {
-    client = new Anthropic();
+    client = new Anthropic({ maxRetries: 5 });
   }
   return client;
 }

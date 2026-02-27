@@ -8,7 +8,8 @@ import {
   categorizeMistake,
   checkAnswer,
   describeMistakePattern,
-  hasAccentMismatch,
+  formatAnswerWarning,
+  getAnswerWarning,
 } from "@/shared/lib/exercise/answer-check";
 import {
   evaluateFreeWriting,
@@ -295,17 +296,17 @@ export async function submitExerciseAnswer(
 
   await prisma.$transaction(operations);
 
-  // Add accent warning if answer was accepted but had wrong accents
-  const accentWarning =
-    isCorrect && hasAccentMismatch(answer, exercise.correctAnswer)
-      ? `Watch your accents! The correct spelling is: ${exercise.correctAnswer}`
-      : undefined;
+  // Add warning if answer was accepted but imperfect (accent/typo)
+  const warning = isCorrect
+    ? getAnswerWarning(answer, exercise.correctAnswer, exerciseType)
+    : null;
+  const warningText = formatAnswerWarning(warning, exercise.correctAnswer);
 
   return {
     isCorrect,
     correctAnswer: exercise.correctAnswer,
-    explanation: accentWarning
-      ? `${accentWarning}\n\n${exercise.explanation ?? ""}`
+    explanation: warningText
+      ? `${warningText}\n\n${exercise.explanation ?? ""}`
       : (exercise.explanation ?? ""),
     mistakeCategory,
     retryTopicId: !isCorrect ? topicId : undefined,

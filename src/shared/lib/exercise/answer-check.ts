@@ -2,13 +2,57 @@ import type { MistakeCategory } from "@/generated/prisma";
 import type { ExerciseType } from "@/shared/types/exercise";
 
 // ──────────────────────────────────────────────
+// Text normalization helpers
+// ──────────────────────────────────────────────
+
+const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+const stripTrailingPunctuation = (s: string) => s.replace(/[.!?¿¡,;:]+$/g, "");
+const stripAccents = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+/**
+ * Levenshtein edit distance between two strings.
+ * Used for typo tolerance — accepts answers within 1-2 edits.
+ */
+function levenshteinDistance(a: string, b: string): number {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+
+  const matrix: number[][] = [];
+
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      const cost = b[i - 1] === a[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1, // deletion
+        matrix[i][j - 1] + 1, // insertion
+        matrix[i - 1][j - 1] + cost, // substitution
+      );
+    }
+  }
+
+  return matrix[b.length][a.length];
+}
+
+/** Max allowed Levenshtein distance based on answer length */
+function maxTypoDistance(correctLength: number): number {
+  if (correctLength <= 4) return 0; // Too short for typo tolerance
+  if (correctLength <= 10) return 1;
+  return 2;
+}
+
+// ──────────────────────────────────────────────
 // Answer checking
 // ──────────────────────────────────────────────
 
 /**
  * Check student answer against correct answer.
- * Case-insensitive, accent-tolerant for text-input types.
- * Returns true if the answer is correct.
+ * Lenient matching for text-input types: ignores trailing punctuation,
+ * tolerates accent differences and small typos (1-2 edits).
+ * Returns true if the answer is correct (or close enough).
  */
 export function checkAnswer(
   userAnswer: string,
@@ -39,6 +83,114 @@ export function checkAnswer(
       return false;
   }
 }
+
+/**
+ * Text-based answer matching with 3 tiers:
+ * 1. Exact match (after normalization + punctuation strip)
+ * 2. Accent-tolerant match
+ * 3. Typo-tolerant match (Levenshtein distance ≤ threshold)
+ */
+function matchTextAnswer(userAnswer: string, correctAnswer: string): boolean {
+  const userNorm = stripTrailingPunctuation(normalize(userAnswer));
+  const correctNorm = stripTrailingPunctuation(normalize(correctAnswer));
+
+  // Tier 1: exact match
+  if (userNorm === correctNorm) return true;
+
+  // Tier 2: accent-tolerant
+  const userNoAccents = stripAccents(userNorm);
+  const correctNoAccents = stripAccents(correctNorm);
+  if (userNoAccents === correctNoAccents) return true;
+
+  // Tier 3: typo-tolerant (on accent-stripped strings)
+  const maxDist = maxTypoDistance(correctNoAccents.length);
+  if (
+    maxDist > 0 &&
+    levenshteinDistance(userNoAccents, correctNoAccents) <= maxDist
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+// ──────────────────────────────────────────────
+// Answer warnings (for accepted-but-imperfect answers)
+// ──────────────────────────────────────────────
+
+export type AnswerWarning = "accent" | "typo" | null;
+
+/**
+ * Determine what kind of warning to show for an accepted answer.
+ * Returns null if the answer is exact. Only call when checkAnswer() returned true.
+ */
+export function getAnswerWarning(
+  userAnswer: string,
+  correctAnswer: string,
+  exerciseType: ExerciseType,
+): AnswerWarning {
+  // Only relevant for text-input types
+  if (
+    exerciseType === "multiple_choice" ||
+    exerciseType === "match_pairs" ||
+    exerciseType === "free_writing" ||
+    exerciseType === "reading_comprehension"
+  ) {
+    return null;
+  }
+
+  const userNorm = stripTrailingPunctuation(normalize(userAnswer));
+  const correctNorm = stripTrailingPunctuation(normalize(correctAnswer));
+
+  // Exact match (possibly differing only in punctuation) — no warning
+  if (userNorm === correctNorm) return null;
+
+  // Accent mismatch
+  const userNoAccents = stripAccents(userNorm);
+  const correctNoAccents = stripAccents(correctNorm);
+  if (userNoAccents === correctNoAccents) return "accent";
+
+  // Typo (Levenshtein accepted)
+  return "typo";
+}
+
+/**
+ * Build a human-readable warning message for imperfect answers.
+ */
+export function formatAnswerWarning(
+  warning: AnswerWarning,
+  correctAnswer: string,
+): string | null {
+  if (!warning) return null;
+
+  const clean = stripTrailingPunctuation(correctAnswer);
+  switch (warning) {
+    case "accent":
+      return `Watch your accents! Correct spelling: ${clean}`;
+    case "typo":
+      return `Close! Watch your spelling: ${clean}`;
+  }
+}
+
+/**
+ * @deprecated Use getAnswerWarning() instead. Kept for backwards compatibility.
+ */
+export function hasAccentMismatch(
+  userAnswer: string,
+  correctAnswer: string,
+): boolean {
+  const userNorm = normalize(userAnswer);
+  const correctNorm = normalize(correctAnswer);
+
+  return (
+    userNorm !== correctNorm &&
+    stripAccents(userNorm) === stripAccents(correctNorm)
+  );
+}
+
+// ──────────────────────────────────────────────
+// Structured answer matching
+// ──────────────────────────────────────────────
 
 /**
  * Match-pairs answer comparison: parse JSON arrays, build Map(left→right), compare.
@@ -82,48 +234,6 @@ function matchReadingComprehensionAnswer(
   } catch {
     return userAnswer.trim() === correctAnswer.trim();
   }
-}
-
-/**
- * Text-based answer matching: case-insensitive, whitespace-normalized,
- * with accent-tolerant fallback.
- */
-function matchTextAnswer(userAnswer: string, correctAnswer: string): boolean {
-  const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
-
-  const userNorm = normalize(userAnswer);
-  const correctNorm = normalize(correctAnswer);
-
-  if (userNorm === correctNorm) return true;
-
-  // Accent-tolerant fallback: strip diacritics and compare
-  // Note: counted as correct, but hasAccentMismatch() flags it for feedback
-  const stripAccents = (s: string) =>
-    s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-  return stripAccents(userNorm) === stripAccents(correctNorm);
-}
-
-/**
- * Check if the answer matches but has incorrect accents.
- * Used to show a "watch your accents" warning even when the answer is accepted.
- */
-export function hasAccentMismatch(
-  userAnswer: string,
-  correctAnswer: string,
-): boolean {
-  const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
-  const stripAccents = (s: string) =>
-    s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-  const userNorm = normalize(userAnswer);
-  const correctNorm = normalize(correctAnswer);
-
-  // Only a mismatch if they differ with accents but match without
-  return (
-    userNorm !== correctNorm &&
-    stripAccents(userNorm) === stripAccents(correctNorm)
-  );
 }
 
 // ──────────────────────────────────────────────
