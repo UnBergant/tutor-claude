@@ -36,7 +36,7 @@ export function LessonComplete({
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-4">
-      <Card>
+      <Card className="animate-scale-in">
         <CardHeader>
           <CardTitle className="text-center">{lessonTitle}</CardTitle>
         </CardHeader>

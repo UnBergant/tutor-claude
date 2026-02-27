@@ -19,10 +19,10 @@ export function ProgressTabs({
         <TabsTrigger value="mistakes">Mistakes</TabsTrigger>
       </TabsList>
       <TabsContent value="overview">
-        <div className="space-y-4 mt-4">{overviewContent}</div>
+        <div className="space-y-4 mt-4 stagger-fade-in">{overviewContent}</div>
       </TabsContent>
       <TabsContent value="mistakes">
-        <div className="mt-4">{mistakesContent}</div>
+        <div className="mt-4 animate-fade-in-up">{mistakesContent}</div>
       </TabsContent>
     </Tabs>
   );

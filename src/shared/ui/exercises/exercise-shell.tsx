@@ -36,7 +36,7 @@ export function ExerciseShell({
         <Progress value={progress} />
       </div>
 
-      <Card>
+      <Card className={loading ? undefined : "animate-fade-in-up"}>
         {title && (
           <CardHeader>
             <CardTitle className="text-base">{title}</CardTitle>

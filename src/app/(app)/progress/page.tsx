@@ -57,7 +57,7 @@ export default async function ProgressPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="animate-fade-in">
         <h1 className="text-2xl font-bold tracking-tight">Progress</h1>
         <p className="text-muted-foreground">
           Your learning statistics and mistake patterns.

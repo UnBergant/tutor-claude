@@ -15,7 +15,7 @@
 }
 
 :root {
-  --radius: 0.625rem;
+  --radius: 0.75rem;
 
   --background: oklch(0.98 0.005 270);
   --foreground: oklch(0.145 0.03 265);
@@ -40,6 +40,12 @@
 
   --destructive: oklch(0.55 0.2 25);
   --destructive-foreground: oklch(0.98 0.01 25);
+
+  --success: oklch(0.55 0.16 145);
+  --success-foreground: oklch(0.98 0.01 145);
+
+  --warning: oklch(0.7 0.15 75);
+  --warning-foreground: oklch(0.2 0.05 75);
 
   --border: oklch(0.88 0.02 270);
   --input: oklch(0.88 0.02 270);
@@ -86,6 +92,12 @@
   --destructive: oklch(0.55 0.2 25);
   --destructive-foreground: oklch(0.98 0.01 25);
 
+  --success: oklch(0.65 0.16 145);
+  --success-foreground: oklch(0.14 0.02 145);
+
+  --warning: oklch(0.75 0.15 75);
+  --warning-foreground: oklch(0.14 0.02 75);
+
   --border: oklch(0.26 0.03 270);
   --input: oklch(0.26 0.03 270);
   --ring: oklch(0.65 0.2 275);
@@ -131,6 +143,12 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
 
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -157,6 +175,9 @@
 
   --animate-shake: shake 0.5s ease-in-out;
   --animate-pulse-once: pulse-once 0.6s ease-in-out;
+  --animate-fade-in: fade-in 0.4s ease-out both;
+  --animate-fade-in-up: fade-in-up 0.5s ease-out both;
+  --animate-scale-in: scale-in 0.3s ease-out both;
 }
 
 /* Prose table styles — explicit overrides for grammar explanation blocks */
@@ -215,5 +236,71 @@
   100% {
     transform: scale(1);
     opacity: 1;
+  }
+}
+
+/* Content appearance animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Staggered entrance — add to parent container, children animate in sequence */
+.stagger-fade-in > * {
+  animation: fade-in-up 0.5s ease-out both;
+}
+.stagger-fade-in > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.stagger-fade-in > *:nth-child(2) {
+  animation-delay: 60ms;
+}
+.stagger-fade-in > *:nth-child(3) {
+  animation-delay: 120ms;
+}
+.stagger-fade-in > *:nth-child(4) {
+  animation-delay: 180ms;
+}
+.stagger-fade-in > *:nth-child(5) {
+  animation-delay: 240ms;
+}
+.stagger-fade-in > *:nth-child(6) {
+  animation-delay: 300ms;
+}
+
+/* Respects reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .stagger-fade-in > *,
+  .animate-fade-in,
+  .animate-fade-in-up,
+  .animate-scale-in {
+    animation-duration: 0.01ms;
+    animation-delay: 0ms;
   }
 }
