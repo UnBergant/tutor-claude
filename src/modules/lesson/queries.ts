@@ -91,6 +91,19 @@ export async function getMistakeStats(userId: string) {
 }
 
 /**
+ * Get just the active module ID (lightweight — no joins).
+ */
+export async function getActiveModuleId(
+  userId: string,
+): Promise<string | null> {
+  const profile = await prisma.userProfile.findUnique({
+    where: { userId },
+    select: { activeModuleId: true },
+  });
+  return profile?.activeModuleId ?? null;
+}
+
+/**
  * Get all modules for a user (for module selection).
  */
 export async function getUserModules(userId: string) {

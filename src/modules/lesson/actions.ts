@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import type { Prisma } from "@/generated/prisma";
 import { TOPIC_BY_ID } from "@/shared/data/grammar-topics";
 import { generateStructured } from "@/shared/lib/ai/client";
@@ -17,7 +18,8 @@ import {
   categorizeMistake,
   checkAnswer,
   describeMistakePattern,
-  hasAccentMismatch,
+  formatAnswerWarning,
+  getAnswerWarning,
 } from "@/shared/lib/exercise/answer-check";
 import {
   evaluateFreeWriting,
@@ -236,6 +238,28 @@ export async function regenerateModuleProposals(): Promise<ModuleProposal[]> {
 }
 
 /**
+ * Switch active module without generating lessons or navigating.
+ * Used for inline module switching on the /lessons page.
+ */
+export async function activateModule(moduleId: string): Promise<void> {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Not authenticated");
+  const userId = session.user.id;
+
+  const module = await prisma.module.findUnique({
+    where: { id: moduleId },
+  });
+  if (!module || module.userId !== userId) throw new Error("Module not found");
+
+  await prisma.userProfile.update({
+    where: { userId },
+    data: { activeModuleId: moduleId },
+  });
+
+  revalidatePath("/lessons");
+}
+
+/**
  * Select a module to work on. Sets it as active and generates the first lesson if needed.
  */
 export async function selectModule(moduleId: string): Promise<LessonDetail> {
@@ -322,7 +346,17 @@ export async function generateLesson(
     toolDescription: "Generate a structured Spanish grammar lesson",
     schema: LESSON_GENERATION_SCHEMA,
     userId,
+    maxTokens: 2048,
   });
+
+  // Guard: AI may return incomplete data under tight rate/token limits
+  if (!lessonData.blocks?.length) {
+    console.error(
+      "[generateLesson] AI returned incomplete data:",
+      JSON.stringify(lessonData).slice(0, 500),
+    );
+    throw new Error("AI generated a lesson without blocks. Please try again.");
+  }
 
   // Create lesson and blocks in transaction
   const lesson = await prisma.$transaction(async (tx) => {
@@ -369,8 +403,8 @@ export async function generateLesson(
     orderBy: { order: "asc" },
   });
 
-  // Generate exercises for all blocks in parallel
-  const exercisePromises = blocks.flatMap((block, blockIdx) => {
+  // Generate exercises sequentially to stay within API rate limits (5 req/min on Free Tier)
+  const exerciseRequests = blocks.flatMap((block, blockIdx) => {
     const blockData = lessonData.blocks[blockIdx];
     if (!blockData) return [];
 
@@ -384,37 +418,22 @@ export async function generateLesson(
     }));
   });
 
-  const generatedExercises = await Promise.allSettled(
-    exercisePromises.map(async (req) => {
+  const successfulExercises: ((typeof exerciseRequests)[number] & {
+    result: Awaited<ReturnType<typeof generateAndValidateExercise>>;
+  })[] = [];
+
+  for (const req of exerciseRequests) {
+    try {
       const result = await generateAndValidateExercise(req.type, topic, userId);
-      return { ...req, result };
-    }),
-  );
-
-  // Log rejected exercises
-  const rejected = generatedExercises.filter(
-    (r): r is PromiseRejectedResult => r.status === "rejected",
-  );
-  for (const r of rejected) {
-    console.error("[generateLesson] Exercise generation failed:", r.reason);
+      successfulExercises.push({ ...req, result });
+    } catch (error) {
+      console.error("[generateLesson] Exercise generation failed:", error);
+    }
   }
-
-  // Persist exercises per block
-  const successfulExercises = generatedExercises
-    .filter(
-      (
-        r,
-      ): r is PromiseFulfilledResult<
-        (typeof exercisePromises)[number] & {
-          result: Awaited<ReturnType<typeof generateAndValidateExercise>>;
-        }
-      > => r.status === "fulfilled",
-    )
-    .map((r) => r.value);
 
   if (successfulExercises.length === 0) {
     throw new Error(
-      `All ${exercisePromises.length} exercises failed to generate. Check logs for details.`,
+      `All ${exerciseRequests.length} exercises failed to generate. Check logs for details.`,
     );
   }
 
@@ -659,16 +678,16 @@ export async function submitLessonExercise(
 
   await prisma.$transaction(operations);
 
-  const accentWarning =
-    isCorrect && hasAccentMismatch(answer, exercise.correctAnswer)
-      ? `Watch your accents! The correct spelling is: ${exercise.correctAnswer}`
-      : undefined;
+  const warning = isCorrect
+    ? getAnswerWarning(answer, exercise.correctAnswer, exerciseType)
+    : null;
+  const warningText = formatAnswerWarning(warning, exercise.correctAnswer);
 
   return {
     isCorrect,
     correctAnswer: exercise.correctAnswer,
-    explanation: accentWarning
-      ? `${accentWarning}\n\n${exercise.explanation ?? ""}`
+    explanation: warningText
+      ? `${warningText}\n\n${exercise.explanation ?? ""}`
       : (exercise.explanation ?? ""),
     mistakeCategory,
     retryTopicId: !isCorrect ? topicId : undefined,
