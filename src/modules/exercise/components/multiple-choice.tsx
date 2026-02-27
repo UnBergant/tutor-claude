@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/shared/lib/utils";
 import type { ExerciseFeedback } from "@/shared/types/exercise";
 import { Button } from "@/shared/ui/button";
@@ -29,6 +29,12 @@ export function MultipleChoice({
   disabled,
 }: MultipleChoiceProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+  // Reset selection when exercise changes (new prompt = new exercise)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional reset on exercise identity change
+  useEffect(() => {
+    setSelectedIndex(null);
+  }, [prompt, options]);
 
   function handleSelect(index: number) {
     if (disabled || feedback) return;

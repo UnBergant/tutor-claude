@@ -28,8 +28,8 @@ export function ExerciseFactory({
     case "gap_fill":
       return (
         <GapFill
-          before={exercise.before ?? ""}
-          after={exercise.after ?? ""}
+          before={exercise.before}
+          after={exercise.after}
           hint={exercise.hint}
           translation={exercise.translation}
           feedback={feedback}
@@ -42,8 +42,8 @@ export function ExerciseFactory({
     case "multiple_choice":
       return (
         <MultipleChoice
-          prompt={exercise.prompt ?? ""}
-          options={exercise.options ?? []}
+          prompt={exercise.prompt}
+          options={exercise.options}
           feedback={feedback}
           correctIndex={-1} // hidden from client; MC shows correct after feedback
           onSubmit={(answer) => onSubmit(answer)}

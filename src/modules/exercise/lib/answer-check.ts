@@ -54,10 +54,33 @@ function matchTextAnswer(userAnswer: string, correctAnswer: string): boolean {
   if (userNorm === correctNorm) return true;
 
   // Accent-tolerant fallback: strip diacritics and compare
+  // Note: counted as correct, but hasAccentMismatch() flags it for feedback
   const stripAccents = (s: string) =>
     s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
   return stripAccents(userNorm) === stripAccents(correctNorm);
+}
+
+/**
+ * Check if the answer matches but has incorrect accents.
+ * Used to show a "watch your accents" warning even when the answer is accepted.
+ */
+export function hasAccentMismatch(
+  userAnswer: string,
+  correctAnswer: string,
+): boolean {
+  const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+  const stripAccents = (s: string) =>
+    s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  const userNorm = normalize(userAnswer);
+  const correctNorm = normalize(correctAnswer);
+
+  // Only a mismatch if they differ with accents but match without
+  return (
+    userNorm !== correctNorm &&
+    stripAccents(userNorm) === stripAccents(correctNorm)
+  );
 }
 
 // ──────────────────────────────────────────────

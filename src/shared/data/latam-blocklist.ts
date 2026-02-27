@@ -17,10 +17,10 @@ export const LATAM_BLOCKLIST = new Map<string, string>([
 
   // ── Transportation ──
   ["carro", "coche"],
-  ["caro", "coche"], // common typo of carro — context-dependent, but flagged
+  // "caro" removed — valid Peninsular word meaning "expensive"
   ["manejar", "conducir"],
   ["camioneta", "furgoneta"],
-  ["autobús", "autobús"], // same in both, but "camión" means bus in Mexico
+  // "autobús" removed — same in both variants (not a LatAm term)
   ["camión", "autobús"], // Mexican usage for bus
   ["colectivo", "autobús"],
   ["guagua", "autobús"], // Caribbean
@@ -50,7 +50,7 @@ export const LATAM_BLOCKLIST = new Map<string, string>([
   ["frazada", "manta"],
   ["cobija", "manta"],
   ["regadera", "ducha"],
-  ["grifo", "grifo"], // same in Spain — but "llave" = tap in LatAm
+  // "grifo" removed — same in Spain (not a LatAm term)
   ["llave de agua", "grifo"],
   ["lavaplatos", "lavavajillas"],
   ["mesada", "encimera"],
@@ -95,12 +95,12 @@ export const LATAM_BLOCKLIST = new Map<string, string>([
   ["mesero", "camarero"],
   ["mesera", "camarera"],
   ["mozo", "camarero"],
-  ["propina", "propina"], // same, but "tip" usage differs
+  // "propina" removed — same in both variants
 
   // ── Communication & Office ──
   ["platicar", "charlar"],
   ["plática", "charla"],
-  ["bolígrafo", "bolígrafo"], // same — but "lapicero" is LatAm
+  // "bolígrafo" removed — same in both variants
   ["lapicero", "bolígrafo"],
   ["lapicera", "bolígrafo"],
   ["folder", "carpeta"],
@@ -135,9 +135,8 @@ export const LATAM_BLOCKLIST = new Map<string, string>([
   ["aplicar", "solicitar"], // false friend: apply for job
 
   // ── Pronouns & Grammar ──
-  ["ustedes", "vosotros/as"], // informal plural context
-  // Note: "ustedes" IS correct in formal contexts in Spain
-  // The validation pipeline should only flag "ustedes" when used informally
+  // "ustedes" removed — valid in formal Spanish and Canary Islands dialect
+  // Context-dependent detection deferred to Phase 6
 
   // ── Interjections & Colloquial ──
   ["órale", "vale"],

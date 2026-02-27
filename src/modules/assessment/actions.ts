@@ -13,6 +13,11 @@ import {
   MULTIPLE_CHOICE_SCHEMA,
 } from "@/shared/lib/ai/prompts/assessment";
 import { CELESTIA_SYSTEM_PROMPT } from "@/shared/lib/ai/prompts/system";
+import {
+  hintMatchesAnswer,
+  sanitizeGapFill,
+  sanitizeMultipleChoice,
+} from "@/shared/lib/ai/sanitize";
 import { auth } from "@/shared/lib/auth";
 import { prisma } from "@/shared/lib/prisma";
 import type {
@@ -462,101 +467,8 @@ async function generateAssessmentItem(
   return sanitizeMultipleChoice(data);
 }
 
-/**
- * Check if the hint is essentially the same as the correct answer.
- * If so, the hint gives away the answer and should be suppressed.
- */
-function hintMatchesAnswer(hint: string, correctAnswer: string): boolean {
-  const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
-  return normalize(hint) === normalize(correctAnswer);
-}
-
-/**
- * Sanitize AI-generated gap-fill parts.
- * If the AI included underscores/blanks in before or after, re-split around them.
- */
-function sanitizeGapFill(
-  before: string,
-  after: string,
-): { before: string; after: string } {
-  const blankPattern = /_{2,}|\.{3,}|…/;
-  const beforeMatch = blankPattern.exec(before);
-  const afterMatch = blankPattern.exec(after);
-
-  if (beforeMatch) {
-    // Underscores found in "before" — everything before them is real "before",
-    // everything after them belongs to "after"
-    const realBefore = before.slice(0, beforeMatch.index);
-    const rest = before.slice(beforeMatch.index + beforeMatch[0].length);
-    return { before: realBefore, after: rest + after };
-  }
-
-  if (afterMatch) {
-    // Underscores found in "after" — everything after them is real "after",
-    // everything before them belongs to "before"
-    const rest = after.slice(0, afterMatch.index);
-    const realAfter = after.slice(afterMatch.index + afterMatch[0].length);
-    return { before: before + rest, after: realAfter };
-  }
-
-  return { before, after };
-}
-
-/**
- * Sanitize AI-generated multiple-choice data.
- * 1. Ensures all 4 options are distinct (de-duplicates).
- * 2. Detects answer leaking: if the correct answer text appears in the prompt, removes it.
- */
-function sanitizeMultipleChoice(
-  data: GeneratedMultipleChoice,
-): GeneratedMultipleChoice {
-  // De-duplicate options
-  const seen = new Set<string>();
-  const options = data.options.map((opt) => {
-    let unique = opt;
-    let suffix = 2;
-    while (seen.has(unique)) {
-      unique = `${opt} (${suffix})`;
-      suffix++;
-    }
-    seen.add(unique);
-    return unique;
-  });
-
-  // Fix answer leaking: if words from correctAnswer appear in prompt after ___
-  let prompt = data.prompt;
-  const blankIdx = prompt.indexOf("___");
-  if (blankIdx !== -1) {
-    const afterBlank = prompt.slice(blankIdx + 3).trim();
-    const correctAnswer = data.options[data.correctIndex];
-    // Check if the text after blank starts with a word from the correct answer
-    const correctWords = correctAnswer.toLowerCase().split(/\s+/);
-    const afterWords = afterBlank.toLowerCase().split(/\s+/);
-    // Find how many leading words in afterBlank match trailing words in correctAnswer
-    let leakedCount = 0;
-    for (let i = 0; i < afterWords.length && i < correctWords.length; i++) {
-      const afterClean = afterWords[i].replace(/[.,;:!?]/g, "");
-      if (correctWords.includes(afterClean)) {
-        leakedCount++;
-      } else {
-        break;
-      }
-    }
-    if (leakedCount > 0) {
-      // Remove leaked words from the text after blank
-      const afterBlankWords = afterBlank.split(/\s+/);
-      const cleaned = afterBlankWords.slice(leakedCount).join(" ");
-      prompt = `${prompt.slice(0, blankIdx + 3)} ${cleaned}`;
-    }
-  }
-
-  return {
-    ...data,
-    prompt,
-    options,
-    correctAnswer: options[data.correctIndex],
-  };
-}
+// sanitizeGapFill, sanitizeMultipleChoice, hintMatchesAnswer
+// → imported from @/shared/lib/ai/sanitize
 
 /**
  * Convert server-side item to client-safe item (strips correctAnswer).

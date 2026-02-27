@@ -302,6 +302,7 @@ model MistakeEntry {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, relatedTopicId, category])
   @@index([userId, category])
 }
 

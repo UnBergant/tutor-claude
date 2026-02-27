@@ -153,25 +153,51 @@ export interface ExerciseAttemptResult {
 // Client-safe exercise (no correct answer)
 // ──────────────────────────────────────────────
 
-/** Exercise data sent to the client (correctAnswer stripped) */
-export interface ExerciseClientItem {
+/** Exercise data sent to the client (correctAnswer stripped) — discriminated union */
+export type ExerciseClientItem =
+  | ExerciseClientGapFill
+  | ExerciseClientMultipleChoice
+  | ExerciseClientMatchPairs
+  | ExerciseClientReorderWords
+  | ExerciseClientFreeWriting
+  | ExerciseClientReadingComprehension;
+
+interface ExerciseClientBase {
   exerciseId: string;
-  type: ExerciseType;
-  /** GapFill fields */
-  before?: string;
-  after?: string;
+}
+
+export interface ExerciseClientGapFill extends ExerciseClientBase {
+  type: "gap_fill";
+  before: string;
+  after: string;
   hint?: string;
   translation?: string;
-  /** MultipleChoice fields */
-  prompt?: string;
-  options?: string[];
-  /** MatchPairs fields */
-  pairs?: { left: string; right: string }[];
-  /** ReorderWords fields */
-  words?: string[];
-  /** FreeWriting fields */
-  writingPrompt?: string;
-  /** ReadingComprehension fields */
-  passage?: string;
-  questions?: ReadingQuestion[];
+}
+
+export interface ExerciseClientMultipleChoice extends ExerciseClientBase {
+  type: "multiple_choice";
+  prompt: string;
+  options: string[];
+}
+
+export interface ExerciseClientMatchPairs extends ExerciseClientBase {
+  type: "match_pairs";
+  pairs: { left: string; right: string }[];
+}
+
+export interface ExerciseClientReorderWords extends ExerciseClientBase {
+  type: "reorder_words";
+  words: string[];
+  translation?: string;
+}
+
+export interface ExerciseClientFreeWriting extends ExerciseClientBase {
+  type: "free_writing";
+  writingPrompt: string;
+}
+
+export interface ExerciseClientReadingComprehension extends ExerciseClientBase {
+  type: "reading_comprehension";
+  passage: string;
+  questions: ReadingQuestion[];
 }

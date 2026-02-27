@@ -16,6 +16,11 @@ import {
   type GeneratedExerciseMultipleChoice,
 } from "@/shared/lib/ai/prompts/exercise";
 import { CELESTIA_SYSTEM_PROMPT } from "@/shared/lib/ai/prompts/system";
+import {
+  hintMatchesAnswer,
+  sanitizeGapFill,
+  sanitizeMultipleChoice,
+} from "@/shared/lib/ai/sanitize";
 import { auth } from "@/shared/lib/auth";
 import { prisma } from "@/shared/lib/prisma";
 import type {
@@ -30,6 +35,7 @@ import {
   categorizeMistake,
   checkAnswer,
   describeMistakePattern,
+  hasAccentMismatch,
 } from "./lib/answer-check";
 import {
   generateWithRetry,
@@ -76,7 +82,7 @@ const reportErrorSchema = z.object({
  */
 export async function generateExercise(
   topicId: string,
-  type: ExerciseType,
+  type: GeneratableExerciseType,
   lessonId: string,
   lessonBlockId?: string,
 ): Promise<ExerciseClientItem> {
@@ -88,26 +94,27 @@ export async function generateExercise(
   const topic = TOPIC_BY_ID.get(topicId);
   if (!topic) throw new Error(`Unknown topic: ${topicId}`);
 
-  // Count existing exercises to determine order
-  const existingCount = await prisma.exercise.count({
-    where: { lessonId },
-  });
-
   const { content, correctAnswer, explanation, question } =
     await generateAndValidateExercise(type, topic, session.user.id);
 
-  // Persist to DB
-  const exercise = await prisma.exercise.create({
-    data: {
-      lessonId,
-      lessonBlockId: lessonBlockId ?? null,
-      type: toPrismaExerciseType(type),
-      question,
-      content: content as unknown as Prisma.InputJsonValue,
-      correctAnswer,
-      explanation,
-      order: existingCount + 1,
-    },
+  // Persist inside transaction to get consistent order
+  const exercise = await prisma.$transaction(async (tx) => {
+    const existingCount = await tx.exercise.count({
+      where: { lessonId },
+    });
+
+    return tx.exercise.create({
+      data: {
+        lessonId,
+        lessonBlockId: lessonBlockId ?? null,
+        type: toPrismaExerciseType(type),
+        question,
+        content: content as unknown as Prisma.InputJsonValue,
+        correctAnswer,
+        explanation,
+        order: existingCount + 1,
+      },
+    });
   });
 
   return toClientItem(exercise.id, type, content);
@@ -117,9 +124,12 @@ export async function generateExercise(
  * Generate a batch of exercises for a lesson block.
  * More cost-effective than individual calls.
  */
+/** Exercise types currently supported for generation */
+type GeneratableExerciseType = "gap_fill" | "multiple_choice";
+
 export async function generateExerciseBatch(
   topicId: string,
-  types: ExerciseType[],
+  types: GeneratableExerciseType[],
   lessonBlockId: string,
   lessonId: string,
   count: number,
@@ -128,38 +138,48 @@ export async function generateExerciseBatch(
 
   const session = await auth();
   if (!session?.user?.id) throw new Error("Not authenticated");
+  const userId = session.user.id;
 
   const topic = TOPIC_BY_ID.get(topicId);
   if (!topic) throw new Error(`Unknown topic: ${topicId}`);
 
-  const existingCount = await prisma.exercise.count({
-    where: { lessonId },
-  });
+  // Generate all exercises in parallel (AI calls are independent)
+  const typeList = Array.from(
+    { length: count },
+    (_, i) => types[i % types.length],
+  );
+  const generated = await Promise.all(
+    typeList.map((type) => generateAndValidateExercise(type, topic, userId)),
+  );
 
-  const exercises: ExerciseClientItem[] = [];
-
-  for (let i = 0; i < count; i++) {
-    // Alternate between provided types
-    const type = types[i % types.length];
-
-    const { content, correctAnswer, explanation, question } =
-      await generateAndValidateExercise(type, topic, session.user.id);
-
-    const exercise = await prisma.exercise.create({
-      data: {
-        lessonId,
-        lessonBlockId,
-        type: toPrismaExerciseType(type),
-        question,
-        content: content as unknown as Prisma.InputJsonValue,
-        correctAnswer,
-        explanation,
-        order: existingCount + i + 1,
-      },
+  // Persist sequentially inside a transaction to ensure consistent ordering
+  const exercises = await prisma.$transaction(async (tx) => {
+    const existingCount = await tx.exercise.count({
+      where: { lessonId },
     });
 
-    exercises.push(toClientItem(exercise.id, type, content));
-  }
+    const results: ExerciseClientItem[] = [];
+    for (let i = 0; i < generated.length; i++) {
+      const { content, correctAnswer, explanation, question } = generated[i];
+      const type = typeList[i];
+
+      const exercise = await tx.exercise.create({
+        data: {
+          lessonId,
+          lessonBlockId,
+          type: toPrismaExerciseType(type),
+          question,
+          content: content as unknown as Prisma.InputJsonValue,
+          correctAnswer,
+          explanation,
+          order: existingCount + i + 1,
+        },
+      });
+
+      results.push(toClientItem(exercise.id, type, content));
+    }
+    return results;
+  });
 
   return exercises;
 }
@@ -180,10 +200,13 @@ export async function submitExerciseAnswer(
 
   const exercise = await prisma.exercise.findUnique({
     where: { id: exerciseId },
-    include: { lesson: true },
+    include: { lesson: { include: { module: true } } },
   });
 
   if (!exercise) throw new Error("Exercise not found");
+  if (exercise.lesson.module.userId !== userId) {
+    throw new Error("Not authorized");
+  }
 
   const exerciseType = fromPrismaExerciseType(exercise.type);
   const isCorrect = checkAnswer(answer, exercise.correctAnswer, exerciseType);
@@ -219,7 +242,11 @@ export async function submitExerciseAnswer(
     operations.push(
       prisma.mistakeEntry.upsert({
         where: {
-          id: `${userId}-${topicId}-${mistakeCategory}`,
+          userId_relatedTopicId_category: {
+            userId,
+            relatedTopicId: topicId,
+            category: mistakeCategory,
+          },
         },
         create: {
           userId,
@@ -239,10 +266,18 @@ export async function submitExerciseAnswer(
 
   await prisma.$transaction(operations);
 
+  // Add accent warning if answer was accepted but had wrong accents
+  const accentWarning =
+    isCorrect && hasAccentMismatch(answer, exercise.correctAnswer)
+      ? `Watch your accents! The correct spelling is: ${exercise.correctAnswer}`
+      : undefined;
+
   return {
     isCorrect,
     correctAnswer: exercise.correctAnswer,
-    explanation: exercise.explanation ?? "",
+    explanation: accentWarning
+      ? `${accentWarning}\n\n${exercise.explanation ?? ""}`
+      : (exercise.explanation ?? ""),
     mistakeCategory,
     retryTopicId: !isCorrect ? exercise.lesson.topicId : undefined,
   };
@@ -260,7 +295,16 @@ export async function reportExerciseError(
   const session = await auth();
   if (!session?.user?.id) throw new Error("Not authenticated");
 
-  // Store as a special ExerciseAttempt with isCorrect: false and feedback containing the report
+  const exercise = await prisma.exercise.findUnique({
+    where: { id: exerciseId },
+    include: { lesson: { include: { module: true } } },
+  });
+  if (!exercise) throw new Error("Exercise not found");
+  if (exercise.lesson.module.userId !== session.user.id) {
+    throw new Error("Not authorized");
+  }
+
+  // Store as a special ExerciseAttempt (not counted in analytics — userAnswer marks it as report)
   await prisma.exerciseAttempt.create({
     data: {
       userId: session.user.id,
@@ -282,7 +326,10 @@ export async function getBlockExercises(
   if (!session?.user?.id) throw new Error("Not authenticated");
 
   const exercises = await prisma.exercise.findMany({
-    where: { lessonBlockId },
+    where: {
+      lessonBlockId,
+      lesson: { module: { userId: session.user.id } },
+    },
     orderBy: { order: "asc" },
   });
 
@@ -316,12 +363,15 @@ async function generateAndValidateExercise(
   userId: string,
 ): Promise<GeneratedExerciseResult> {
   if (type === "gap_fill") {
-    const prompt = buildExerciseGapFillPrompt(topic);
-    const data = await generateWithRetry(async () => {
+    const basePrompt = buildExerciseGapFillPrompt(topic);
+    const data = await generateWithRetry(async (previousErrors) => {
+      const userMessage = previousErrors
+        ? `${basePrompt}\n\nIMPORTANT: Your previous attempt was rejected for these reasons: ${previousErrors.join("; ")}. Fix these issues.`
+        : basePrompt;
       const { data } = await generateStructured<GeneratedExerciseGapFill>({
         endpoint: "exercise",
         system: CELESTIA_SYSTEM_PROMPT,
-        userMessage: prompt,
+        userMessage,
         toolName: "generate_exercise_gap_fill",
         toolDescription:
           "Generate a gap-fill exercise for a Spanish grammar lesson",
@@ -353,12 +403,15 @@ async function generateAndValidateExercise(
   }
 
   // Multiple choice
-  const prompt = buildExerciseMultipleChoicePrompt(topic);
-  const data = await generateWithRetry(async () => {
+  const basePrompt = buildExerciseMultipleChoicePrompt(topic);
+  const data = await generateWithRetry(async (previousErrors) => {
+    const userMessage = previousErrors
+      ? `${basePrompt}\n\nIMPORTANT: Your previous attempt was rejected for these reasons: ${previousErrors.join("; ")}. Fix these issues.`
+      : basePrompt;
     const { data } = await generateStructured<GeneratedExerciseMultipleChoice>({
       endpoint: "exercise",
       system: CELESTIA_SYSTEM_PROMPT,
-      userMessage: prompt,
+      userMessage,
       toolName: "generate_exercise_multiple_choice",
       toolDescription:
         "Generate a multiple-choice exercise for a Spanish grammar lesson",
@@ -441,84 +494,5 @@ function toClientItem(
   };
 }
 
-// ──────────────────────────────────────────────
-// Sanitization (shared with assessment)
-// ──────────────────────────────────────────────
-
-/** Re-split gap-fill if AI included underscores in before/after */
-function sanitizeGapFill(
-  before: string,
-  after: string,
-): { before: string; after: string } {
-  const blankPattern = /_{2,}|\.{3,}|…/;
-  const beforeMatch = blankPattern.exec(before);
-  const afterMatch = blankPattern.exec(after);
-
-  if (beforeMatch) {
-    const realBefore = before.slice(0, beforeMatch.index);
-    const rest = before.slice(beforeMatch.index + beforeMatch[0].length);
-    return { before: realBefore, after: rest + after };
-  }
-
-  if (afterMatch) {
-    const rest = after.slice(0, afterMatch.index);
-    const realAfter = after.slice(afterMatch.index + afterMatch[0].length);
-    return { before: before + rest, after: realAfter };
-  }
-
-  return { before, after };
-}
-
-/** De-duplicate MC options and fix answer leaking */
-function sanitizeMultipleChoice(
-  data: GeneratedExerciseMultipleChoice,
-): GeneratedExerciseMultipleChoice {
-  const seen = new Set<string>();
-  const options = data.options.map((opt) => {
-    let unique = opt;
-    let suffix = 2;
-    while (seen.has(unique)) {
-      unique = `${opt} (${suffix})`;
-      suffix++;
-    }
-    seen.add(unique);
-    return unique;
-  });
-
-  let prompt = data.prompt;
-  const blankIdx = prompt.indexOf("___");
-  if (blankIdx !== -1) {
-    const afterBlank = prompt.slice(blankIdx + 3).trim();
-    const correctAnswer = options[data.correctIndex];
-    const correctWords = correctAnswer.toLowerCase().split(/\s+/);
-    const afterWords = afterBlank.toLowerCase().split(/\s+/);
-
-    let leakedCount = 0;
-    for (let i = 0; i < afterWords.length && i < correctWords.length; i++) {
-      const afterClean = afterWords[i].replace(/[.,;:!?]/g, "");
-      if (correctWords.includes(afterClean)) {
-        leakedCount++;
-      } else {
-        break;
-      }
-    }
-    if (leakedCount > 0) {
-      const afterBlankWords = afterBlank.split(/\s+/);
-      const cleaned = afterBlankWords.slice(leakedCount).join(" ");
-      prompt = `${prompt.slice(0, blankIdx + 3)} ${cleaned}`;
-    }
-  }
-
-  return {
-    ...data,
-    prompt,
-    options,
-    correctAnswer: options[data.correctIndex],
-  };
-}
-
-/** Check if hint reveals the answer */
-function hintMatchesAnswer(hint: string, correctAnswer: string): boolean {
-  const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
-  return normalize(hint) === normalize(correctAnswer);
-}
+// sanitizeGapFill, sanitizeMultipleChoice, hintMatchesAnswer
+// → imported from @/shared/lib/ai/sanitize

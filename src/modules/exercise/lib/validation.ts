@@ -48,9 +48,7 @@ export function validateGapFill(
 ): ValidationResult<GeneratedExerciseGapFill> {
   return runPipeline(data, gapFillSchema, (d) => {
     const gf = d as GeneratedExerciseGapFill;
-    return extractTextForBlocklistCheck(
-      `${gf.before} ${gf.correctAnswer} ${gf.after}`,
-    );
+    return `${gf.before} ${gf.correctAnswer} ${gf.after}`;
   });
 }
 
@@ -62,7 +60,7 @@ export function validateMultipleChoice(
 ): ValidationResult<GeneratedExerciseMultipleChoice> {
   return runPipeline(data, multipleChoiceSchema, (d) => {
     const mc = d as GeneratedExerciseMultipleChoice;
-    return extractTextForBlocklistCheck(`${mc.prompt} ${mc.options.join(" ")}`);
+    return `${mc.prompt} ${mc.options.join(" ")}`;
   });
 }
 
@@ -122,10 +120,6 @@ function runPipeline<T>(
   };
 }
 
-function extractTextForBlocklistCheck(text: string): string {
-  return text;
-}
-
 // ──────────────────────────────────────────────
 // Generation with retry
 // ──────────────────────────────────────────────
@@ -134,16 +128,16 @@ const MAX_RETRIES = 2;
 
 /**
  * Generate and validate an exercise with automatic retry on validation failure.
- * Calls the generator function, validates the output, and retries up to MAX_RETRIES times.
+ * On retry, passes previous validation errors to the generator so the AI can correct them.
  */
 export async function generateWithRetry<T>(
-  generate: () => Promise<T>,
+  generate: (previousErrors?: string[]) => Promise<T>,
   validate: (data: unknown) => ValidationResult<T>,
 ): Promise<T> {
   let lastErrors: string[] = [];
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    const data = await generate();
+    const data = await generate(attempt > 0 ? lastErrors : undefined);
     const result = validate(data);
 
     if (result.valid && result.data) {

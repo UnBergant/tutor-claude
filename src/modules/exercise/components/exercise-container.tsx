@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/shared/ui/button";
 import { useExercise } from "../hooks";
 import { ExerciseFactory } from "./exercise-factory";
@@ -41,10 +41,17 @@ export function ExerciseContainer({
   const [reportOpen, setReportOpen] = useState(false);
   const [reportText, setReportText] = useState("");
 
+  // Fire onComplete exactly once when all exercises are done
+  const completeFiredRef = useRef(false);
+  useEffect(() => {
+    if (isComplete && !completeFiredRef.current) {
+      completeFiredRef.current = true;
+      onComplete?.({ correct: correctCount, total: totalAnswered });
+    }
+  }, [isComplete, correctCount, totalAnswered, onComplete]);
+
   // Completed all exercises
   if (isComplete) {
-    onComplete?.({ correct: correctCount, total: totalAnswered });
-
     return (
       <ExerciseShell
         current={totalExercises}
@@ -114,16 +121,7 @@ export function ExerciseContainer({
           </Button>
 
           <div className="flex gap-2">
-            {feedback.retryTopicId && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs"
-                onClick={handleNext}
-              >
-                Review this topic
-              </Button>
-            )}
+            {/* "Review this topic" button hidden until Phase 3b implements actual review navigation */}
 
             <Button
               variant="ghost"
