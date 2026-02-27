@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# $1 = previous HEAD, $2 = new HEAD, $3 = checkout type (1=branch, 0=file)
+# Only run on branch checkout, not file checkout
+[ "$3" != "1" ] && exit 0
+
+branch=$(git symbolic-ref --short HEAD 2>/dev/null) || exit 0
+remote_branch="origin/$branch"
+
+# Check if remote tracking branch exists
+if ! git rev-parse --verify "$remote_branch" >/dev/null 2>&1; then
+  exit 0
+fi
+
+echo ""
+echo "⟳ Fetching origin..."
+git fetch origin "$branch" --quiet 2>/dev/null
+
+local_head=$(git rev-parse HEAD)
+remote_head=$(git rev-parse "$remote_branch" 2>/dev/null) || exit 0
+
+if [ "$local_head" = "$remote_head" ]; then
+  echo "✓ $branch is up to date with $remote_branch"
+else
+  ahead=$(git rev-list --count "$remote_branch".."$branch" 2>/dev/null)
+  behind=$(git rev-list --count "$branch".."$remote_branch" 2>/dev/null)
+
+  echo ""
+  echo "⚠ $branch differs from $remote_branch:"
+  [ "$ahead" -gt 0 ] && echo "  ↑ $ahead commit(s) ahead"
+  [ "$behind" -gt 0 ] && echo "  ↓ $behind commit(s) behind"
+  echo ""
+  git --no-pager diff --stat "$branch" "$remote_branch"
+fi
+
+echo ""
