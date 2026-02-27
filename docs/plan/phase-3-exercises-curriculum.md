@@ -175,7 +175,7 @@ All 6 exercise types working in the engine and lesson flow.
 2. **Shared infrastructure expansion**
    - `generation.ts`: `shuffleUntilDifferent()` (Fisher-Yates + ensures different from original), `toClientItem()` handles all 6 types, `exerciseRecordToClientItem()` casts to full `ExerciseContent`, switch-based `generateAndValidateExercise()` with per-type generator functions
    - `validation.ts`: 4 new Zod schemas + validators (`reorderWordsSchema`, `matchPairsSchema`, `freeWritingSchema`, `readingComprehensionSchema`). MatchPairs validates no duplicate left/right items. RC validates per-question option counts.
-   - `answer-check.ts`: Map-based `matchPairsAnswer()` (tolerates JSON key ordering), `matchReadingComprehensionAnswer()` (all-or-nothing, accent-tolerant per sub-answer). Updated `categorizeMistake()`: match_pairs → VOCABULARY, reading_comprehension → GRAMMAR.
+   - `answer-check.ts`: Map-based `matchPairsAnswer()` (tolerates JSON key ordering), `matchReadingComprehensionAnswer()` (all-or-nothing, accent-tolerant per sub-answer). Updated `categorizeMistake()`: match_pairs → VOCABULARY, reading_comprehension → per-sub-answer analysis (WORD_ORDER / GRAMMAR / VOCABULARY).
    - `curriculum.ts`: exerciseTypes enum expanded to all 6 types in schema + `GeneratedLessonBlock` type. `buildLessonGenerationPrompt()` updated with type-selection guidance.
    - `exercise/actions.ts`: schemas accept all 6 types, answer max increased to 5000 (FreeWriting/RC JSON), content cast to `ExerciseContent`.
 
@@ -183,7 +183,7 @@ All 6 exercise types working in the engine and lesson flow.
 
 4. **MatchPairs** — `buildExerciseMatchPairsPrompt()` generates 4-5 pairs. Correct answer stored as sorted JSON. Client receives separate `leftItems`/`rightItems` (right shuffled). UI: two columns, tap left then right to create color-coded pairs (5-color palette). Tap matched pair to undo. Submit when all matched. Map-based answer comparison.
 
-5. **FreeWriting** — `buildExerciseFreeWritingPrompt()` generates prompt + sampleAnswer. New `evaluation.ts` with `evaluateFreeWriting()` — uses `generateStructured()` with "evaluation" endpoint (Haiku). `buildFreeWritingEvaluationPrompt()` returns corrections[], overallFeedback, score, mistakeCategory. Submission flow branches in both `submitLessonExercise` and `submitExerciseAnswer` — AI evaluation instead of deterministic `checkAnswer()`. UI: textarea (min 10 chars) + structured feedback display.
+5. **FreeWriting** — `buildExerciseFreeWritingPrompt()` generates prompt + sampleAnswer. `evaluation.ts`: `evaluateFreeWriting()` with try/catch + `EVALUATION_FALLBACK`, `formatFreeWritingFeedback()` shared helper (deduplicates feedback building). Uses `generateStructured()` with "evaluation" endpoint (Haiku). Submission flow branches in both actions — AI evaluation instead of deterministic `checkAnswer()`. UI: textarea (min 10 chars), corrections detected by `→`, sample answer via `feedback.correctAnswer`.
 
 6. **ReadingComprehension** — `buildExerciseReadingComprehensionPrompt()` generates 100-200 word passage + 2-3 questions (MC/gap_fill/true_false). Correct answer stored as JSON array. UI: scrollable passage card + numbered sub-questions with inline renderers (MCSubQuestion, TrueFalseSubQuestion, GapFillSubQuestion). "Submit All" when all answered. Per-question green/red indicators after feedback.
 
