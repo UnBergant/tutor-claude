@@ -19,7 +19,10 @@ import {
   describeMistakePattern,
   hasAccentMismatch,
 } from "@/shared/lib/exercise/answer-check";
-import { evaluateFreeWriting } from "@/shared/lib/exercise/evaluation";
+import {
+  evaluateFreeWriting,
+  formatFreeWritingFeedback,
+} from "@/shared/lib/exercise/evaluation";
 import {
   exerciseRecordToClientItem,
   fromPrismaExerciseType,
@@ -532,24 +535,8 @@ export async function submitLessonExercise(
       userId,
     );
 
-    const feedbackParts: string[] = [];
-    if (evaluation.overallFeedback) {
-      feedbackParts.push(evaluation.overallFeedback);
-    }
-    if (evaluation.corrections.length > 0) {
-      feedbackParts.push(
-        ...evaluation.corrections.map(
-          (c) => `"${c.original}" → "${c.corrected}": ${c.explanation}`,
-        ),
-      );
-    }
-    if (content.sampleAnswer) {
-      feedbackParts.push(`Sample answer: ${content.sampleAnswer}`);
-    }
-
-    const mistakeCategory = evaluation.isCorrect
-      ? null
-      : (evaluation.mistakeCategory as "GRAMMAR" | "VOCABULARY" | "WORD_ORDER");
+    const { feedbackText, mistakeCategory } =
+      formatFreeWritingFeedback(evaluation);
 
     const operations: Prisma.PrismaPromise<unknown>[] = [
       prisma.exerciseAttempt.create({
@@ -559,7 +546,7 @@ export async function submitLessonExercise(
           userAnswer: answer,
           isCorrect: evaluation.isCorrect,
           category: mistakeCategory,
-          feedback: feedbackParts.join("\n"),
+          feedback: feedbackText,
         },
       }),
       prisma.lessonProgress.updateMany({
@@ -599,7 +586,7 @@ export async function submitLessonExercise(
     return {
       isCorrect: evaluation.isCorrect,
       correctAnswer: content.sampleAnswer ?? "",
-      explanation: feedbackParts.join("\n"),
+      explanation: feedbackText,
       mistakeCategory,
       retryTopicId: !evaluation.isCorrect ? topicId : undefined,
     };

@@ -88,32 +88,27 @@ export function FreeWriting({
               : "bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-300",
           )}
         >
-          {/* Split feedback into lines for structured display */}
           {feedback.explanation.split("\n").map((line) => {
             if (!line.trim()) return null;
-            // Lines starting with " are corrections
-            if (line.startsWith('"')) {
+            // Lines containing → are corrections (e.g. "habla" → "hablo": explanation)
+            if (line.includes("→")) {
               return (
                 <p key={line} className="font-mono text-xs">
                   {line}
                 </p>
               );
             }
-            // Lines starting with "Sample answer:" get special styling
-            if (line.startsWith("Sample answer:")) {
-              return (
-                <div key={line} className="pt-2 border-t border-current/10">
-                  <p className="font-medium text-xs uppercase tracking-wide opacity-70 mb-1">
-                    Sample answer
-                  </p>
-                  <p className="italic">
-                    {line.replace("Sample answer: ", "")}
-                  </p>
-                </div>
-              );
-            }
             return <p key={line}>{line}</p>;
           })}
+          {/* Sample answer from correctAnswer field (not parsed from explanation) */}
+          {!feedback.isCorrect && feedback.correctAnswer && (
+            <div className="pt-2 border-t border-current/10">
+              <p className="font-medium text-xs uppercase tracking-wide opacity-70 mb-1">
+                Sample answer
+              </p>
+              <p className="italic">{feedback.correctAnswer}</p>
+            </div>
+          )}
         </div>
       )}
 

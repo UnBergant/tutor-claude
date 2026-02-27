@@ -150,7 +150,7 @@ export function categorizeMistake(
   }
 
   if (exerciseType === "reading_comprehension") {
-    return "GRAMMAR";
+    return categorizeReadingComprehensionMistake(userAnswer, correctAnswer);
   }
 
   const userWords = userAnswer.trim().toLowerCase().split(/\s+/);
@@ -168,6 +168,37 @@ export function categorizeMistake(
 
   // Default: vocabulary mistake (wrong word entirely)
   return "VOCABULARY";
+}
+
+/**
+ * Analyze the first wrong sub-answer in a reading comprehension exercise.
+ * Falls back to GRAMMAR if parsing fails.
+ */
+function categorizeReadingComprehensionMistake(
+  userAnswer: string,
+  correctAnswer: string,
+): MistakeCategory {
+  try {
+    const userAnswers = JSON.parse(userAnswer) as string[];
+    const correctAnswers = JSON.parse(correctAnswer) as string[];
+
+    for (let i = 0; i < correctAnswers.length; i++) {
+      const ua = (userAnswers[i] ?? "").trim().toLowerCase();
+      const ca = correctAnswers[i].trim().toLowerCase();
+      if (ua === ca) continue;
+
+      // Analyze the first wrong sub-answer with word-level heuristics
+      const userWords = ua.split(/\s+/);
+      const correctWords = ca.split(/\s+/);
+
+      if (hasSameWords(userWords, correctWords)) return "WORD_ORDER";
+      if (shareCommonRoot(userWords, correctWords)) return "GRAMMAR";
+      return "VOCABULARY";
+    }
+  } catch {
+    // Parsing failed — fall through
+  }
+  return "GRAMMAR";
 }
 
 /** Check if two word arrays contain the same words (ignoring order) */

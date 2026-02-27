@@ -9,6 +9,38 @@ import { CELESTIA_SYSTEM_PROMPT } from "@/shared/lib/ai/prompts/system";
 /** Re-export for consumer convenience */
 export type { FreeWritingEvaluation as FreeWritingEvaluationResult } from "@/shared/lib/ai/prompts/exercise";
 
+type MistakeCategory = "GRAMMAR" | "VOCABULARY" | "WORD_ORDER";
+
+/**
+ * Format a FreeWritingEvaluation into feedback text and mistake category.
+ * Shared by both exercise and lesson submission flows.
+ *
+ * Note: sample answer is NOT included in feedbackText — consumers should use
+ * `correctAnswer` from ExerciseAttemptResult for display.
+ */
+export function formatFreeWritingFeedback(evaluation: FreeWritingEvaluation): {
+  feedbackText: string;
+  mistakeCategory: MistakeCategory | null;
+} {
+  const feedbackParts: string[] = [];
+  if (evaluation.overallFeedback) {
+    feedbackParts.push(evaluation.overallFeedback);
+  }
+  if (evaluation.corrections.length > 0) {
+    feedbackParts.push(
+      ...evaluation.corrections.map(
+        (c) => `"${c.original}" → "${c.corrected}": ${c.explanation}`,
+      ),
+    );
+  }
+
+  const mistakeCategory = evaluation.isCorrect
+    ? null
+    : (evaluation.mistakeCategory as MistakeCategory);
+
+  return { feedbackText: feedbackParts.join("\n"), mistakeCategory };
+}
+
 const EVALUATION_FALLBACK: FreeWritingEvaluation = {
   isCorrect: false,
   score: 0,

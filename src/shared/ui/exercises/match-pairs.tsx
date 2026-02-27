@@ -26,6 +26,19 @@ const PAIR_COLORS = [
   "bg-pink-100 border-pink-400 text-pink-800 dark:bg-pink-900/30 dark:border-pink-600 dark:text-pink-300",
 ];
 
+/** Parse JSON pairs into readable "left → right" strings, fallback to raw text */
+function formatCorrectPairs(correctAnswer: string): string[] {
+  try {
+    const pairs = JSON.parse(correctAnswer) as {
+      left: string;
+      right: string;
+    }[];
+    return pairs.map((p) => `${p.left} → ${p.right}`);
+  } catch {
+    return [correctAnswer];
+  }
+}
+
 export function MatchPairs({
   leftItems,
   rightItems,
@@ -213,9 +226,16 @@ export function MatchPairs({
           )}
         >
           {!feedback.isCorrect && (
-            <p className="font-medium mb-1">
-              Correct answer: {feedback.correctAnswer}
-            </p>
+            <div className="mb-2">
+              <p className="font-medium mb-1">Correct pairs:</p>
+              <ul className="list-none space-y-0.5">
+                {formatCorrectPairs(feedback.correctAnswer).map((pair) => (
+                  <li key={pair} className="font-mono text-xs">
+                    {pair}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           <p>{feedback.explanation}</p>
         </div>
