@@ -1,30 +1,32 @@
+import "server-only";
+
 import { prisma } from "@/shared/lib/prisma";
 
 /**
  * Get the user's active module with its lessons and progress.
+ * Single query with join (instead of two sequential queries).
  */
 export async function getActiveModuleWithProgress(userId: string) {
   const profile = await prisma.userProfile.findUnique({
     where: { userId },
-    select: { activeModuleId: true },
-  });
-
-  if (!profile?.activeModuleId) return null;
-
-  return prisma.module.findUnique({
-    where: { id: profile.activeModuleId },
-    include: {
-      lessons: {
-        orderBy: { order: "asc" },
+    select: {
+      activeModule: {
         include: {
-          progress: {
-            where: { userId },
-            take: 1,
+          lessons: {
+            orderBy: { order: "asc" },
+            include: {
+              progress: {
+                where: { userId },
+                take: 1,
+              },
+            },
           },
         },
       },
     },
   });
+
+  return profile?.activeModule ?? null;
 }
 
 /**

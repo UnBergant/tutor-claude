@@ -114,15 +114,17 @@ export function LessonFlow({ lesson }: LessonFlowProps) {
     return (
       <LessonComplete
         lessonTitle={lesson.title}
-        blockScores={blockScores}
-        blockTitles={lesson.blocks.map((b) => b.title)}
+        blockScores={blockScores.map((score, i) => ({
+          title: lesson.blocks[i]?.title ?? `Block ${i + 1}`,
+          ...score,
+        }))}
         result={completionResult}
         isCompleting={isCompleting}
         onComplete={async () => {
           const result = await handleCompleteLesson();
           if (result) setCompletionResult(result);
         }}
-        moduleId={lesson.id}
+        showBackButton
       />
     );
   }

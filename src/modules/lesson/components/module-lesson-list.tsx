@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
@@ -42,6 +43,7 @@ export function ModuleLessonList({
         router.push(`/lesson/${lesson.id}`);
       }
     } catch (err) {
+      toast.error("Failed to generate lesson. Please try again.");
       console.error("Failed to generate lesson:", err);
     } finally {
       setIsGenerating(false);

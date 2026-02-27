@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
 import {
   type ModuleProposal,
@@ -29,6 +30,7 @@ export function ModuleSelection({
       router.push(`/lesson/${lesson.id}`);
     } catch (err) {
       setSelectingId(null);
+      toast.error("Failed to start module. Please try again.");
       console.error("Failed to select module:", err);
     }
   }
@@ -39,6 +41,7 @@ export function ModuleSelection({
         const newModules = await regenerateModuleProposals();
         setModules(newModules);
       } catch (err) {
+        toast.error("Failed to generate new suggestions. Please try again.");
         console.error("Failed to regenerate modules:", err);
       }
     });

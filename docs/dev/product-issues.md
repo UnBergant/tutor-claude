@@ -18,14 +18,16 @@ Collected during development and testing. Grouped by phase, open items first.
 
 ## Phase 3b — Lesson Flow (code review findings)
 
-- [ ] **`LessonComplete` gets `lesson.id` as `moduleId` prop** — `lesson-flow.tsx:126` passes `moduleId={lesson.id}` but this is a lesson ID, not module ID. Currently used only as boolean (show/hide "Back to Lessons" button), but semantically wrong. Rename prop to `showBackButton: boolean`.
-- [ ] **`generateLesson` silently drops failed exercises** — `Promise.allSettled` filters out rejected results with no logging. If all exercises fail, lesson is created with empty blocks and `LessonFlow` shows fallback "Loading lesson..." forever. Add logging for rejected promises + guard against zero-exercise blocks.
-- [ ] **Unsafe `metadata` cast in `generateModuleProposals`** — `actions.ts:128-134` casts `assessment.metadata` to `{ result: AssessmentResult }` without null/shape guard. Will throw at runtime if metadata is unexpected. Add validation.
-- [ ] **`queries.ts` missing `import "server-only"`** — exports prisma functions without server-only guard. Risk of accidental client import. Add `import "server-only"` at top.
-- [ ] **No user-visible error on module/lesson generation failure** — `module-selection.tsx` and `module-lesson-list.tsx` catch errors with only `console.error`. User gets no feedback. Add sonner toast notifications.
-- [ ] **`lessonCount: 0` for existing modules** — `generateModuleProposals` returns `lessonCount: 0` for cached modules instead of actual lesson count. Not displayed currently but misleading data.
-- [ ] **`useLesson` hook — `useCallback` with `[store]` doesn't memoize** — `store` object changes reference on every state update, making `useCallback` ineffective. Use `useLessonStore.getState()` inside callbacks or specific action selectors.
-- [ ] **Exercise ordering is global, not per-block** — `generateLesson` gives exercises a global `order: i + 1` across all blocks instead of per-block ordering. Works functionally but semantically incorrect.
+- [x] **`LessonComplete` gets `lesson.id` as `moduleId` prop** — renamed prop to `showBackButton: boolean`. Merged `blockScores` + `blockTitles` into single `BlockScoreEntry[]` prop.
+- [x] **`generateLesson` silently drops failed exercises** — added `console.error` logging for rejected promises + `throw` if all exercises fail (zero-exercise guard).
+- [x] **Unsafe `metadata` cast in `generateModuleProposals`** — replaced `as unknown as { result }` with `Record<string, unknown>` + null guards for `result.gapMap` and `result.estimatedLevel`.
+- [x] **`queries.ts` missing `import "server-only"`** — added `import "server-only"` at top.
+- [x] **No user-visible error on module/lesson generation failure** — added `toast.error()` (sonner) in `module-selection.tsx` (handleSelect, handleRegenerate) and `module-lesson-list.tsx` (handleGenerateNext).
+- [x] **`lessonCount: 0` for existing modules** — replaced hardcoded `0` with `include: { _count: { select: { lessons: true } } }` to return actual lesson count.
+- [x] **`useLesson` hook — `useCallback` with `[store]` doesn't memoize** — refactored all callbacks to use `useLessonStore.getState()` inside, empty `[]` deps for stable references.
+- [x] **Exercise ordering is global, not per-block** — added `orderByBlock` Map to assign per-block sequential order.
+- [x] **Race condition in `completeLesson`** — replaced `$transaction([update, updateMany])` with conditional `updateMany` (`status: { not: "COMPLETED" }`), only increments `lessonsCompleted` if status actually changed.
+- [x] **Race condition in `generateModuleProposals`** — re-check inside transaction: if modules appeared between initial check and persist, return existing ones instead of creating duplicates.
 
 ## Phase 6 — Polish & Deploy
 

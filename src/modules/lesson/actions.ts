@@ -82,7 +82,11 @@ const INTERVAL_SEQUENCE = [1, 3, 7, 14, 30];
 
 function nextInterval(currentInterval: number): number {
   const idx = INTERVAL_SEQUENCE.indexOf(currentInterval);
-  if (idx === -1 || idx === INTERVAL_SEQUENCE.length - 1) {
+  if (idx === -1) {
+    // Unknown interval (e.g. schema default changed) — start from beginning
+    return INTERVAL_SEQUENCE[0];
+  }
+  if (idx === INTERVAL_SEQUENCE.length - 1) {
     return INTERVAL_SEQUENCE[INTERVAL_SEQUENCE.length - 1];
   }
   return INTERVAL_SEQUENCE[idx + 1];
@@ -105,6 +109,7 @@ export async function generateModuleProposals(): Promise<ModuleProposal[]> {
   const existing = await prisma.module.findMany({
     where: { userId },
     orderBy: { order: "asc" },
+    include: { _count: { select: { lessons: true } } },
   });
 
   if (existing.length > 0) {
@@ -114,7 +119,7 @@ export async function generateModuleProposals(): Promise<ModuleProposal[]> {
       description: m.description ?? "",
       topicId: m.topicId,
       level: m.level,
-      lessonCount: 0, // will be populated from lessons
+      lessonCount: m._count.lessons,
     }));
   }
 
@@ -125,13 +130,16 @@ export async function generateModuleProposals(): Promise<ModuleProposal[]> {
       "No completed assessment found. Please take the placement test first.",
     );
 
-  const meta = assessment.metadata as unknown as {
-    result: AssessmentResult;
-    learningGoal: string;
-  };
-  const gapMap = meta.result.gapMap;
-  const userLevel = meta.result.estimatedLevel;
-  const learningGoal = meta.learningGoal ?? "personal";
+  const meta = assessment.metadata as Record<string, unknown> | null;
+  const result = (meta?.result ?? null) as AssessmentResult | null;
+  if (!result?.gapMap || !result?.estimatedLevel) {
+    throw new Error(
+      "Assessment data is incomplete. Please retake the placement test.",
+    );
+  }
+  const gapMap = result.gapMap;
+  const userLevel = result.estimatedLevel;
+  const learningGoal = (meta?.learningGoal as string | undefined) ?? "personal";
 
   // Load recent mistakes
   const mistakes = await getMistakeStats(userId);
@@ -165,21 +173,32 @@ export async function generateModuleProposals(): Promise<ModuleProposal[]> {
     );
   }
 
-  // Persist modules in transaction
-  const created = await prisma.$transaction(
-    validModules.map((m, i) =>
-      prisma.module.create({
-        data: {
-          userId,
-          title: m.title,
-          description: m.description,
-          topicId: m.topicId,
-          level: m.level,
-          order: i + 1,
-        },
-      }),
-    ),
-  );
+  // Persist modules in transaction (re-check for race condition — another request may have created them)
+  const created = await prisma.$transaction(async (tx) => {
+    const recheck = await tx.module.count({ where: { userId } });
+    if (recheck > 0) {
+      return tx.module.findMany({
+        where: { userId },
+        orderBy: { order: "asc" },
+        include: { _count: { select: { lessons: true } } },
+      });
+    }
+    return Promise.all(
+      validModules.map((m, i) =>
+        tx.module.create({
+          data: {
+            userId,
+            title: m.title,
+            description: m.description,
+            topicId: m.topicId,
+            level: m.level,
+            order: i + 1,
+          },
+          include: { _count: { select: { lessons: true } } },
+        }),
+      ),
+    );
+  });
 
   return created.map((m) => ({
     id: m.id,
@@ -187,8 +206,7 @@ export async function generateModuleProposals(): Promise<ModuleProposal[]> {
     description: m.description ?? "",
     topicId: m.topicId,
     level: m.level,
-    lessonCount:
-      validModules.find((vm) => vm.topicId === m.topicId)?.lessonCount ?? 3,
+    lessonCount: m._count.lessons,
   }));
 }
 
@@ -369,6 +387,14 @@ export async function generateLesson(
     }),
   );
 
+  // Log rejected exercises
+  const rejected = generatedExercises.filter(
+    (r): r is PromiseRejectedResult => r.status === "rejected",
+  );
+  for (const r of rejected) {
+    console.error("[generateLesson] Exercise generation failed:", r.reason);
+  }
+
   // Persist exercises per block
   const successfulExercises = generatedExercises
     .filter(
@@ -382,24 +408,32 @@ export async function generateLesson(
     )
     .map((r) => r.value);
 
-  if (successfulExercises.length > 0) {
-    await prisma.$transaction(
-      successfulExercises.map((ex, i) =>
-        prisma.exercise.create({
-          data: {
-            lessonId: lesson.id,
-            lessonBlockId: ex.blockId,
-            type: toPrismaExerciseType(ex.type),
-            question: ex.result.question,
-            content: ex.result.content as unknown as Prisma.InputJsonValue,
-            correctAnswer: ex.result.correctAnswer,
-            explanation: ex.result.explanation,
-            order: i + 1,
-          },
-        }),
-      ),
+  if (successfulExercises.length === 0) {
+    throw new Error(
+      `All ${exercisePromises.length} exercises failed to generate. Check logs for details.`,
     );
   }
+
+  // Per-block ordering: group by blockId and assign order within each block
+  const orderByBlock = new Map<string, number>();
+  await prisma.$transaction(
+    successfulExercises.map((ex) => {
+      const blockOrder = (orderByBlock.get(ex.blockId) ?? 0) + 1;
+      orderByBlock.set(ex.blockId, blockOrder);
+      return prisma.exercise.create({
+        data: {
+          lessonId: lesson.id,
+          lessonBlockId: ex.blockId,
+          type: toPrismaExerciseType(ex.type),
+          question: ex.result.question,
+          content: ex.result.content as unknown as Prisma.InputJsonValue,
+          correctAnswer: ex.result.correctAnswer,
+          explanation: ex.result.explanation,
+          order: blockOrder,
+        },
+      });
+    }),
+  );
 
   return getLessonDetail(lesson.id);
 }
@@ -615,23 +649,25 @@ export async function completeLesson(
   const nextReviewAt = new Date();
   nextReviewAt.setDate(nextReviewAt.getDate() + newInterval);
 
-  // Update progress + increment lessonsCompleted
-  await prisma.$transaction([
-    prisma.lessonProgress.update({
-      where: { id: progress.id },
-      data: {
-        status: "COMPLETED",
-        score,
-        completedAt: new Date(),
-        nextReviewAt,
-        interval: newInterval,
-      },
-    }),
-    prisma.userProfile.updateMany({
+  // Atomic update: only complete if not already completed (prevents double-submit race)
+  const updated = await prisma.lessonProgress.updateMany({
+    where: { id: progress.id, status: { not: "COMPLETED" } },
+    data: {
+      status: "COMPLETED",
+      score,
+      completedAt: new Date(),
+      nextReviewAt,
+      interval: newInterval,
+    },
+  });
+
+  // Only increment counter if we actually transitioned the status
+  if (updated.count > 0) {
+    await prisma.userProfile.updateMany({
       where: { userId },
       data: { lessonsCompleted: { increment: 1 } },
-    }),
-  ]);
+    });
+  }
 
   return { score, nextReviewAt, newInterval };
 }

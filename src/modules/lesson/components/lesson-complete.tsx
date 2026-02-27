@@ -6,37 +6,33 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Progress } from "@/shared/ui/progress";
 import type { LessonCompleteResult } from "../actions";
 
+interface BlockScoreEntry {
+  title: string;
+  correct: number;
+  total: number;
+}
+
 interface LessonCompleteProps {
   lessonTitle: string;
-  blockScores: { correct: number; total: number }[];
-  blockTitles: string[];
+  blockScores: BlockScoreEntry[];
   result: LessonCompleteResult | null;
   isCompleting: boolean;
   onComplete: () => void;
-  moduleId?: string;
+  showBackButton?: boolean;
 }
 
 export function LessonComplete({
   lessonTitle,
   blockScores,
-  blockTitles,
   result,
   isCompleting,
   onComplete,
-  moduleId,
+  showBackButton,
 }: LessonCompleteProps) {
   const overallCorrect = blockScores.reduce((a, s) => a + s.correct, 0);
   const overallTotal = blockScores.reduce((a, s) => a + s.total, 0);
   const overallPercentage =
     overallTotal > 0 ? Math.round((overallCorrect / overallTotal) * 100) : 0;
-
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
-  };
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-4">
@@ -65,17 +61,17 @@ export function LessonComplete({
             <h4 className="text-sm font-medium text-muted-foreground">
               Block Breakdown
             </h4>
-            {blockScores.map((score, i) => {
+            {blockScores.map((entry) => {
               const pct =
-                score.total > 0
-                  ? Math.round((score.correct / score.total) * 100)
+                entry.total > 0
+                  ? Math.round((entry.correct / entry.total) * 100)
                   : 0;
               return (
-                <div key={blockTitles[i]} className="space-y-1">
+                <div key={entry.title} className="space-y-1">
                   <div className="flex justify-between text-sm">
-                    <span>{blockTitles[i]}</span>
+                    <span>{entry.title}</span>
                     <span className="text-muted-foreground">
-                      {score.correct}/{score.total}
+                      {entry.correct}/{entry.total}
                     </span>
                   </div>
                   <Progress value={pct} />
@@ -90,7 +86,13 @@ export function LessonComplete({
               <p className="text-sm text-muted-foreground">
                 Next review scheduled:
               </p>
-              <p className="font-medium">{formatDate(result.nextReviewAt)}</p>
+              <p className="font-medium">
+                {new Date(result.nextReviewAt).toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </p>
             </div>
           )}
         </CardContent>
@@ -109,8 +111,8 @@ export function LessonComplete({
           </Button>
         ) : (
           <>
-            {moduleId && (
-              <Link href={`/lessons`}>
+            {showBackButton && (
+              <Link href="/lessons">
                 <Button className="w-full" size="lg">
                   Back to Lessons
                 </Button>

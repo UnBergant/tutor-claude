@@ -11,81 +11,83 @@ import { useLessonStore } from "./store";
 /**
  * Hook that drives the lesson flow.
  * Manages block-level progression: explanation → exercises → transition → complete.
+ *
+ * Uses useLessonStore.getState() inside callbacks to avoid stale closures
+ * and ensure useCallback memoization works correctly (store object changes
+ * reference on every state update, so [store] deps are effectively no-ops).
  */
 export function useLesson() {
   const store = useLessonStore();
 
-  const initLesson = useCallback(
-    (lesson: LessonDetail) => {
-      store.initLesson(lesson);
-    },
-    [store.initLesson],
-  );
+  const initLesson = useCallback((lesson: LessonDetail) => {
+    useLessonStore.getState().initLesson(lesson);
+  }, []);
 
   const handleStartExercises = useCallback(() => {
-    store.startExercises();
-  }, [store.startExercises]);
+    useLessonStore.getState().startExercises();
+  }, []);
 
-  const handleSubmitAnswer = useCallback(
-    async (answer: string) => {
-      const { blockExercises, currentExerciseIndex } =
-        useLessonStore.getState();
-      const exercise = blockExercises[currentExerciseIndex];
-      if (!exercise || store.isSubmitting) return;
+  const handleSubmitAnswer = useCallback(async (answer: string) => {
+    const state = useLessonStore.getState();
+    const exercise = state.blockExercises[state.currentExerciseIndex];
+    if (!exercise || state.isSubmitting) return;
 
-      store.setIsSubmitting(true);
-      store.setError(null);
-
-      try {
-        const result = await submitLessonExercise(exercise.exerciseId, answer);
-
-        store.recordAnswer(result.isCorrect);
-        store.setExerciseFeedback({
-          isCorrect: result.isCorrect,
-          correctAnswer: result.correctAnswer,
-          explanation: result.explanation,
-          retryTopicId: result.retryTopicId,
-          mistakeCategory: result.mistakeCategory ?? undefined,
-        });
-      } catch (err) {
-        store.setError(
-          err instanceof Error ? err.message : "Failed to submit answer",
-        );
-      } finally {
-        store.setIsSubmitting(false);
-      }
-    },
-    [store],
-  );
-
-  const handleNextExercise = useCallback(() => {
-    store.advanceExercise();
-  }, [store.advanceExercise]);
-
-  const handleContinueToNextBlock = useCallback(() => {
-    store.advanceToNextBlock();
-  }, [store.advanceToNextBlock]);
-
-  const handleCompleteLesson = useCallback(async () => {
-    const { lesson } = useLessonStore.getState();
-    if (!lesson || store.isCompleting) return;
-
-    store.setIsCompleting(true);
-    store.setError(null);
+    state.setIsSubmitting(true);
+    state.setError(null);
 
     try {
-      const result = await completeLessonAction(lesson.id);
-      store.completeLesson();
+      const result = await submitLessonExercise(exercise.exerciseId, answer);
+
+      const current = useLessonStore.getState();
+      current.recordAnswer(result.isCorrect);
+      current.setExerciseFeedback({
+        isCorrect: result.isCorrect,
+        correctAnswer: result.correctAnswer,
+        explanation: result.explanation,
+        retryTopicId: result.retryTopicId,
+        mistakeCategory: result.mistakeCategory ?? undefined,
+      });
+    } catch (err) {
+      useLessonStore
+        .getState()
+        .setError(
+          err instanceof Error ? err.message : "Failed to submit answer",
+        );
+    } finally {
+      useLessonStore.getState().setIsSubmitting(false);
+    }
+  }, []);
+
+  const handleNextExercise = useCallback(() => {
+    useLessonStore.getState().advanceExercise();
+  }, []);
+
+  const handleContinueToNextBlock = useCallback(() => {
+    useLessonStore.getState().advanceToNextBlock();
+  }, []);
+
+  const handleCompleteLesson = useCallback(async () => {
+    const state = useLessonStore.getState();
+    if (!state.lesson || state.isCompleting) return null;
+
+    state.setIsCompleting(true);
+    state.setError(null);
+
+    try {
+      const result = await completeLessonAction(state.lesson.id);
+      useLessonStore.getState().completeLesson();
       return result;
     } catch (err) {
-      store.setError(
-        err instanceof Error ? err.message : "Failed to complete lesson",
-      );
+      useLessonStore
+        .getState()
+        .setError(
+          err instanceof Error ? err.message : "Failed to complete lesson",
+        );
       return null;
     } finally {
-      store.setIsCompleting(false);
+      useLessonStore.getState().setIsCompleting(false);
     }
-  }, [store]);
+  }, []);
 
   // Computed values
   const currentBlock = useMemo(() => {
