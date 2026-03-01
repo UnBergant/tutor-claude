@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getDueReviews, getNextLessonForUser } from "@/modules/lesson/queries";
+import { PhraseOfTheDay } from "@/modules/progress/components/phrase-of-the-day";
+import { getPhraseOfTheDay } from "@/shared/data/phrases";
 import { computeLevelProgress } from "@/shared/lib/assessment-utils";
 import { auth } from "@/shared/lib/auth";
 import { prisma } from "@/shared/lib/prisma";
@@ -172,6 +174,9 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Phrase of the Day — full width below the grid */}
+      <PhraseOfTheDay phrase={getPhraseOfTheDay()} />
     </div>
   );
 }

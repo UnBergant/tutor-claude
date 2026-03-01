@@ -38,7 +38,7 @@ export function BlockExplanation({
   const cleaned = cleanTableBold(explanation);
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-4">
+    <div className="w-full max-w-2xl mx-auto space-y-4 animate-fade-in-up">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <span>
           Block {blockNumber} of {totalBlocks}

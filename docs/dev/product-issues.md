@@ -43,8 +43,44 @@ Collected during development and testing. Grouped by phase, open items first.
 ## Phase 6 — Polish & Deploy
 
 - [ ] **Assessment: "Back" button to change answer** — allow the user to go back to the previous question and re-answer it. Requires storing answer history and reverting Bayesian state.
-- [ ] **Assessment: slow question loading between items** — each question requires an AI call, causing noticeable wait time. Options: (a) prefetch next question while user answers current one, (b) pre-generate a question pool per topic in DB.
-- [ ] **Assessment: pre-generated question pool** — pre-generate and store assessment questions in DB for all grammar topics (gap-fill + MC, multiple variants per topic). Assessment flow pulls from the pool instead of calling AI in real-time. Adaptive algorithm still selects topics/difficulty dynamically, but questions are instant. Benefits: zero loading, consistent quality, no AI cost per assessment.
 - [ ] **Assessment: submit error toast** — when `submitAssessmentAnswer` fails, show a user-facing toast/error instead of only `console.error`. Currently the user sees no feedback if an answer fails to submit.
 - [ ] **Per-session token tracking** — add `assessmentId` (or generic `sessionId`) to `AiUsage` model so token costs can be queried per assessment session, not just globally per user/endpoint.
-- [ ] **E2E tests for assessment flow** — `tests/e2e/` is empty. Add Playwright tests covering: onboarding → assessment → results flow, error recovery, and auth guard.
+- [ ] **E2E tests for assessment flow** — `tests/e2e/` has vocabulary tests, but no assessment flow coverage. Add Playwright tests covering: onboarding → assessment → results flow, error recovery, and auth guard.
+- [ ] **Streak timezone awareness** — `calculateStreak()` uses `setHours(0,0,0,0)` (server-local time). If the server runs in UTC and the user is in UTC+3, "today" differs. Store user timezone in `UserProfile` or normalize to UTC consistently.
+- [ ] **E2E test coverage map** — create `docs/dev/test-coverage.md` with a table of all pages/flows and their E2E coverage status (covered / not covered / partial). Update when adding tests. Start with markdown in repo; migrate to Qase/TestRail if the project grows beyond solo development.
+
+## Post-MVP — Claude API Optimization
+
+Current bottleneck: every exercise is generated via a separate Claude API call in real time. Assessment questions (1 call per question × ~10 questions) and lesson exercises (1 structure + 2-4 exercises = 3-5 calls per lesson) all block the user.
+
+### Pre-generated Question Pool (Assessment)
+
+- [ ] **New `QuestionPool` model** — store pre-generated assessment questions in DB:
+  ```
+  QuestionPool { id, topicId, level, type (GAP_FILL/MC), question, content (JSON), correctAnswer, explanation, usageCount, createdAt }
+  ```
+- [ ] **Seed script** — `prisma/seed-questions.ts` that iterates over all grammar topics × levels × types (gap_fill, multiple_choice) and generates 3-5 variants per combination via batch Claude API calls. Run once offline (not on user request). Target: ~500-1000 questions covering A1-B2.
+- [ ] **Pool-based assessment flow** — `generateNextQuestion()` pulls from `QuestionPool` instead of calling Claude. Bayesian topic selection stays dynamic; only question content comes from pre-generated pool. Fallback: if pool is empty for a topic, generate in real-time (current behavior).
+- [ ] **Benefits:** zero loading time between questions, no AI cost per assessment, consistent quality (questions are validated at seed time), works offline.
+
+### Batch Exercise Generation (Lessons)
+
+- [ ] **Batch prompt for lesson exercises** — instead of N separate `generateStructured()` calls (one per exercise), request all exercises for a block in a single Claude call. Prompt returns an array of exercises. Reduces lesson generation from 3-5 API calls to 1-2 (structure + all exercises in one batch).
+  - New schema: `LESSON_EXERCISES_BATCH_SCHEMA` — array of exercises with `type` discriminator.
+  - New prompt: `buildBatchExercisePrompt(types[], topic, count)` — instructs Claude to generate multiple exercises at once.
+  - Validation: run per-exercise validators on each item in the batch; retry only failed items individually.
+- [ ] **Pre-generated exercise pool (lessons)** — similar to assessment: store exercises per topic/level/type. Lesson generation pulls from pool, only generating custom content for the lesson structure (explanation blocks). Exercises are instant.
+  - Less urgent than assessment pool: lesson exercises need variety (users repeat lessons), so pool must be larger or combined with on-demand generation.
+
+### Prefetch Strategy
+
+- [ ] **Assessment prefetch** — while the user answers question N, pre-generate/pre-fetch question N+1 in the background. Even without a pool, this hides latency for the user.
+  - Implementation: after `submitAssessmentAnswer`, Bayesian update determines next topic → immediately start generating next question → store in session state.
+- [ ] **Lesson exercise prefetch** — during the explanation phase, pre-generate exercises for the current block in the background (currently they're already generated at lesson creation time, so this is less critical).
+
+### Priority Order
+
+1. **Assessment prefetch** — lowest effort, biggest UX win (hides loading between questions)
+2. **Batch exercise generation** — moderate effort, reduces API calls by 2-3× per lesson
+3. **Assessment question pool** — higher effort (seed script, new model), but eliminates AI cost entirely for assessments
+4. **Lesson exercise pool** — highest effort (large pool needed), defer until user base grows

@@ -70,7 +70,7 @@ celestia/
 | UI Components | shadcn/ui (Radix-based, copied into project) |
 | Exercises | Custom exercise components (GapFill, MatchPairs, etc.) |
 | State (client) | Zustand (complex feature state only) |
-| State (server) | TanStack Query |
+| State (server) | Server Components + revalidatePath |
 | Testing | Vitest + Playwright (minimal set) |
 | Frontend Architecture | FSD-lite (app / modules / shared) |
 | Linting | Biome |
@@ -81,7 +81,7 @@ celestia/
 ## Development Principles
 
 1. **Mobile-first** — Tailwind mobile-first utilities, touch-friendly interface; PWA candidate post-MVP
-2. **Separation of Concerns**: Presentation (Tailwind + shadcn/ui) / State (Zustand + TanStack Query) / Logic (hooks, Server Actions)
+2. **Separation of Concerns**: Presentation (Tailwind + shadcn/ui) / State (Zustand + Server Components) / Logic (hooks, Server Actions)
 3. **SOLID**: each module has single responsibility; dependencies via interfaces; Open/Closed via props and composition
 4. **FSD-lite**: reusable UI primitives in `shared/ui/`, feature modules in `modules/`, routes in `app/`
 5. **Container/Presentational**: container components connect stores and pass data via props to pure presentational components
@@ -95,12 +95,6 @@ celestia/
 | Neon / Vercel Postgres | PostgreSQL | Free tier |
 | Anthropic | Claude API | Pay-per-use |
 
-Post-MVP:
-
-| Service | What | Tier |
-|---|---|---|
-| Upstash | Redis (caching, sessions) | Free tier |
-
 ## Key Technical Decisions
 
 - **Single Next.js project over Turborepo monorepo** — Server Actions + Route Handlers eliminate the need for a separate backend; simpler deployment, less boilerplate
@@ -111,11 +105,33 @@ Post-MVP:
 - **FSD-lite over full Feature-Sliced Design** — simplified three-layer structure (app / modules / shared) better suited for a single Next.js project
 - **Prisma over TypeORM** — better TypeScript integration, cleaner migrations, auto-generated types
 - **Zustand only for complex state** — not everywhere; simple state handled by React hooks and Server Components
-- **TanStack Query for server state** — automatic caching, deduplication, background refetching
+- **Server Components for server state** — data fetched on the server via Prisma, no client-side caching layer needed; `revalidatePath()` for cache invalidation after mutations
 - **Biome over ESLint + Prettier** — single tool for linting and formatting, faster
 - **AI rate-limiting per account** — daily/monthly token limits in DB, model selection by task complexity (Haiku for checks, Sonnet for generation)
-- **No Redis in MVP** — PostgreSQL handles all MVP needs; Redis added later for caching and scaling
+- **No Redis** — PostgreSQL handles all needs; revisit only if real performance bottleneck appears
 - **Claude API as sole AI provider (MVP)** — handles all generation: assessment, lessons, exercises, conversation
+
+## Post-MVP: Architecture Migration
+
+After MVP validation, migrate to a decoupled frontend/backend architecture for better interactivity and scalability:
+
+| Layer | MVP (current) | Post-MVP |
+|---|---|---|
+| Backend | Next.js Server Actions | **NestJS** (REST API, DTO validation, Swagger docs) |
+| Server state | Server Components + revalidatePath | **TanStack Query** (caching, optimistic updates, background refetch) |
+| Frontend | Next.js App Router (full-stack) | Next.js as **SPA/SSR frontend only** |
+| Auth | Auth.js (built-in) | Passport.js or Auth.js with external API |
+
+**Why migrate:**
+- Optimistic updates for Duolingo-level responsiveness (0ms perceived latency on exercise submissions)
+- REST API reusable for future mobile app
+- Independent frontend/backend deployment and scaling
+- Clearer separation of concerns
+
+**Migration path:**
+1. Extract Server Actions → NestJS controllers + services (same Prisma, same DB)
+2. Add TanStack Query on the frontend, replace `revalidatePath` with `queryClient.invalidateQueries`
+3. Keep Next.js for routing, SSR, and static pages — remove `"use server"` functions
 
 ## Detailed Documentation
 
@@ -123,7 +139,7 @@ Post-MVP:
 |---|---|
 | Architecture & folder structure | [`docs/dev/architecture.md`](dev/architecture.md) |
 | Styling approach & component patterns | [`docs/dev/styling.md`](dev/styling.md) |
-| State management (Zustand + TanStack Query) | [`docs/dev/state.md`](dev/state.md) |
+| State management (Zustand + Server Components) | [`docs/dev/state.md`](dev/state.md) |
 | Testing strategy | [`docs/dev/testing.md`](dev/testing.md) |
 | API design & Route Handlers | [`docs/dev/api-design.md`](dev/api-design.md) |
 | AI integration & prompts | [`docs/dev/ai-integration.md`](dev/ai-integration.md) |

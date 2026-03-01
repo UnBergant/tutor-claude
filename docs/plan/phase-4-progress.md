@@ -18,10 +18,12 @@ Swapped with former Phase 4 (Chat). Progress features don't depend on chat — a
 3. **Animations & Transitions** — 3 new keyframes (`fade-in`, `fade-in-up`, `scale-in`), CSS-only `.stagger-fade-in` utility for sequential card entrance. Applied to login, dashboard, modules, lessons, progress, exercise shell, lesson complete. `prefers-reduced-motion` respected.
 4. **Bugfix** — assessment `submitAnswerSchema` used `z.string().uuid()` but IDs are CUIDs → fixed to `.cuid()`.
 
-### 4c: Vocabulary & Gamification ← CURRENT
-1. **Personal Vocabulary** — new `VocabularyEntry` model, auto-collect from lessons, flashcard review (mobile-friendly flip cards), topic grouping
-2. **Spaced Repetition** — interval algorithm already implemented (1d → 3d → 7d → 30d on `LessonProgress`), UI for review queue
-3. **Gamification** — streak counter (needs `lastActiveAt` on profile), phrase of the day
+### 4c: Vocabulary & Gamification — ✅ Done
+1. **Personal Vocabulary** — vocabulary auto-extracted from correct exercise answers (deterministic, no AI cost). SM-2 spaced repetition for per-word review. Flashcard UI with CSS 3D flip, know/don't know buttons. Stats bar (total/due/mastered), tabs (All Words/Due), delete support.
+2. **Streak Tracking** — `calculateStreak()` pure function integrated into `completeLesson()`. Updates `currentStreak`, `longestStreak`, `lastActivityDate` on profile.
+3. **Phrase of the Day** — 60 Spanish idioms from Spain (Castellano), deterministic `dayOfYear % length` selection. Card on dashboard with literal translation + example.
+4. **Unit Tests (Vitest)** — 7 new test files (124 total tests): SM-2 algorithm, streak calculation, vocabulary extraction (6 types), answer-check (all types + categorization + warnings), shuffleUntilDifferent, lesson Zustand store, phrases.
+5. **E2E Test (Playwright)** — vocabulary page structure, empty state, tab switching.
 
 ## Verification
 - `/progress` shows real data from completed lessons and exercises

@@ -32,14 +32,17 @@ import {
   toPrismaExerciseType,
 } from "@/shared/lib/exercise/generation";
 import { prisma } from "@/shared/lib/prisma";
+import { calculateStreak } from "@/shared/lib/streak";
 import type { AssessmentResult } from "@/shared/types/assessment";
 import type {
   ExerciseAttemptResult,
   ExerciseClientItem,
+  ExerciseContent,
   FreeWritingContent,
 } from "@/shared/types/exercise";
 import type { CEFRLevel } from "@/shared/types/grammar";
 import { getLatestAssessment, getMistakeStats } from "./queries";
+import { extractAndSaveVocabulary } from "./vocabulary-helper";
 
 // ──────────────────────────────────────────────
 // Types
@@ -602,6 +605,16 @@ export async function submitLessonExercise(
 
     await prisma.$transaction(operations);
 
+    // Extract vocabulary from correct free writing (fire-and-forget)
+    if (evaluation.isCorrect) {
+      extractAndSaveVocabulary(
+        userId,
+        exerciseType,
+        content,
+        exercise.correctAnswer,
+      );
+    }
+
     return {
       isCorrect: evaluation.isCorrect,
       correctAnswer: content.sampleAnswer ?? "",
@@ -677,6 +690,17 @@ export async function submitLessonExercise(
   );
 
   await prisma.$transaction(operations);
+
+  // Extract vocabulary from correct answers (fire-and-forget)
+  if (isCorrect) {
+    const content = exercise.content as unknown as ExerciseContent;
+    extractAndSaveVocabulary(
+      userId,
+      exerciseType,
+      content,
+      exercise.correctAnswer,
+    );
+  }
 
   const warning = isCorrect
     ? getAnswerWarning(answer, exercise.correctAnswer, exerciseType)
@@ -755,11 +779,31 @@ export async function completeLesson(
     },
   });
 
-  // Only increment counter if we actually transitioned the status
+  // Only increment counter and update streak if we actually transitioned the status
   if (updated.count > 0) {
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId },
+      select: {
+        lastActivityDate: true,
+        currentStreak: true,
+        longestStreak: true,
+      },
+    });
+
+    const streak = calculateStreak({
+      lastActivityDate: profile?.lastActivityDate ?? null,
+      currentStreak: profile?.currentStreak ?? 0,
+      longestStreak: profile?.longestStreak ?? 0,
+    });
+
     await prisma.userProfile.updateMany({
       where: { userId },
-      data: { lessonsCompleted: { increment: 1 } },
+      data: {
+        lessonsCompleted: { increment: 1 },
+        currentStreak: streak.currentStreak,
+        longestStreak: streak.longestStreak,
+        lastActivityDate: streak.lastActivityDate,
+      },
     });
   }
 
