@@ -1,8 +1,13 @@
 # Product Issues & Improvements Backlog
 
-Collected during development and testing. Grouped by phase, open items first.
+Collected during development and testing. Open items grouped by phase and feature scope.
 
-## Phase 2 — Assessment Engine
+---
+
+## Completed (Phases 2–3)
+
+<details>
+<summary>Phase 2 — Assessment Engine (10 items, all resolved)</summary>
 
 - [x] **Assessment: button label "Check" → "Continue"/"Next"** — in assessment mode (no feedback), the submit button should say "Continue" or "Next", not "Check". "Check" implies answer validation which doesn't happen in test mode. Fixed: added `submitLabel` prop to GapFill, assessment passes "Continue".
 - [x] **Missing "Living in Spain" goal option** — added `relocation` goal: "Living in Spain — I'm moving to or already live in Spain".
@@ -16,7 +21,10 @@ Collected during development and testing. Grouped by phase, open items first.
 - [x] **Multiple-choice: missing prepositions/articles around blank** — AI drops required words (e.g., "Cuando ___ la oficina" missing "a"). Fixed: verification rule + explicit example.
 - [x] **Multiple-choice: duplicate options** — AI generated identical options, causing React `key` error. Fixed: prompt + server-side de-duplication + `key={index}`.
 
-## Phase 3b — Lesson Flow (code review findings)
+</details>
+
+<details>
+<summary>Phase 3b — Lesson Flow (10 items, all resolved)</summary>
 
 - [x] **`LessonComplete` gets `lesson.id` as `moduleId` prop** — renamed prop to `showBackButton: boolean`. Merged `blockScores` + `blockTitles` into single `BlockScoreEntry[]` prop.
 - [x] **`generateLesson` silently drops failed exercises** — added `console.error` logging for rejected promises + `throw` if all exercises fail (zero-exercise guard).
@@ -29,7 +37,10 @@ Collected during development and testing. Grouped by phase, open items first.
 - [x] **Race condition in `completeLesson`** — replaced `$transaction([update, updateMany])` with conditional `updateMany` (`status: { not: "COMPLETED" }`), only increments `lessonsCompleted` if status actually changed.
 - [x] **Race condition in `generateModuleProposals`** — re-check inside transaction: if modules appeared between initial check and persist, return existing ones instead of creating duplicates.
 
-## Phase 3c — New Exercise Types (code review findings)
+</details>
+
+<details>
+<summary>Phase 3c — New Exercise Types (8 items, all resolved)</summary>
 
 - [x] **MatchPairs shuffle instability** — `toClientItem()` called `shuffleUntilDifferent()` on every read, producing different rightItems order on each page load. Fixed: store shuffled order at generation time in `shuffledRightItems`, use it in `toClientItem()` with `?? fallback` for old DB records.
 - [x] **FreeWriting evaluation no error handling** — `evaluateFreeWriting()` AI call could crash → 500 in submit actions. Fixed: try/catch with `EVALUATION_FALLBACK` constant.
@@ -40,14 +51,36 @@ Collected during development and testing. Grouped by phase, open items first.
 - [x] **FreeWriting fragile feedback parsing** — `free-writing.tsx` split explanation on `\n` with heuristics (starts with `"` → correction, `"Sample answer:"` → special). Fixed: detect corrections by `→` character, display sample answer from `feedback.correctAnswer` instead of parsing from explanation string.
 - [x] **RC categorizeMistake always GRAMMAR** — `answer-check.ts` always returned `GRAMMAR` for reading_comprehension. Fixed: parse sub-answer arrays, analyze first wrong sub-answer with word-level heuristics (WORD_ORDER / GRAMMAR / VOCABULARY).
 
+</details>
+
+---
+
 ## Phase 6 — Polish & Deploy
 
-- [ ] **Assessment: "Back" button to change answer** — allow the user to go back to the previous question and re-answer it. Requires storing answer history and reverting Bayesian state.
-- [ ] **Assessment: submit error toast** — when `submitAssessmentAnswer` fails, show a user-facing toast/error instead of only `console.error`. Currently the user sees no feedback if an answer fails to submit.
+### Chat Enhancements
+
+- [ ] **Inline quick-quiz** — Celestia inserts MC/gap-fill exercises directly into chat messages. User answers via buttons/input, Celestia reacts with feedback and continues the conversation. Requires: structured message types (text vs exercise), exercise rendering inside message bubbles, answer submission without leaving chat.
+- [ ] **Tap-to-translate** — words in Celestia's messages are tappable/clickable, showing translation and grammar info (part of speech, conjugation form) in a tooltip/popover. Helps vocabulary acquisition passively during conversation.
+- [ ] **Vocabulary flashcards in chat** — Celestia shows a flashcard with an English word/phrase, user types the Spanish translation. Celestia checks the answer, provides feedback, and moves to the next card. Integrates with existing SRS vocabulary — prioritizes words due for review.
+- [ ] **Auto-focus input after assistant reply** — when Celestia finishes responding, focus should automatically move to the chat input field so the user can immediately start typing without clicking.
+
+### Assessment Improvements
+
+- [ ] **"Back" button to change answer** — allow the user to go back to the previous question and re-answer it. Requires storing answer history and reverting Bayesian state.
+- [ ] **Submit error toast** — when `submitAssessmentAnswer` fails, show a user-facing toast/error instead of only `console.error`. Currently the user sees no feedback if an answer fails to submit.
+- [ ] **Gap-fill hint = answer fix** — full solution for non-morphology topics where the base form IS the answer (pronouns, nouns). Current workaround: suppress hint when hint=correctAnswer.
+
+### Progress & Gamification
+
+- [ ] **Streak timezone awareness** — `calculateStreak()` uses `setHours(0,0,0,0)` (server-local time). If the server runs in UTC and the user is in UTC+3, "today" differs. Store user timezone in `UserProfile` or normalize to UTC consistently.
+
+### Infrastructure & Testing
+
 - [ ] **Per-session token tracking** — add `assessmentId` (or generic `sessionId`) to `AiUsage` model so token costs can be queried per assessment session, not just globally per user/endpoint.
 - [ ] **E2E tests for assessment flow** — `tests/e2e/` has vocabulary tests, but no assessment flow coverage. Add Playwright tests covering: onboarding → assessment → results flow, error recovery, and auth guard.
-- [ ] **Streak timezone awareness** — `calculateStreak()` uses `setHours(0,0,0,0)` (server-local time). If the server runs in UTC and the user is in UTC+3, "today" differs. Store user timezone in `UserProfile` or normalize to UTC consistently.
-- [ ] **E2E test coverage map** — create `docs/dev/test-coverage.md` with a table of all pages/flows and their E2E coverage status (covered / not covered / partial). Update when adding tests. Start with markdown in repo; migrate to Qase/TestRail if the project grows beyond solo development.
+- [ ] **E2E test coverage map** — create `docs/dev/test-coverage.md` with a table of all pages/flows and their E2E coverage status (covered / not covered / partial). Update when adding tests.
+
+---
 
 ## Post-MVP — Claude API Optimization
 
