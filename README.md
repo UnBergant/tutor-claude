@@ -25,7 +25,7 @@
 | Стилизация | Tailwind CSS |
 | UI компоненты | shadcn/ui (Radix-based) |
 | Упражнения | Кастомные exercise-компоненты (GapFill, MatchPairs и т.д.) |
-| State | Zustand (complex client state) + TanStack Query (server) |
+| State | Zustand (complex client state) + Server Components |
 | Тесты | Vitest + Playwright |
 | Фронт-архитектура | FSD-lite (app / modules / shared) |
 | Линтинг | Biome |
@@ -79,7 +79,7 @@ celestia/
 ## Development Principles
 
 1. **Mobile-first** — Tailwind mobile-first утилиты, touch-friendly интерфейс
-2. **Separation of concerns** — Presentation (Tailwind + shadcn/ui) / State (Zustand + TanStack Query) / Logic (хуки, Server Actions)
+2. **Separation of concerns** — Presentation (Tailwind + shadcn/ui) / State (Zustand + Server Components) / Logic (хуки, Server Actions)
 3. **SOLID** — одна ответственность на модуль, зависимости через интерфейсы
 4. **FSD-lite** — UI-примитивы в `shared/ui/`, фичевые модули в `modules/`, маршруты в `app/`
 5. **Server-first** — Server Components по умолчанию, Client Components только при необходимости

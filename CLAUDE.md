@@ -54,6 +54,17 @@ Key docs:
 - Import rule: `modules/` import from `shared/`, never from each other.
 - Full details in `docs/TECH.md`.
 
+## Feature Lifecycle
+
+Every task follows the standard lifecycle defined in [`docs/dev/feature-lifecycle.md`](docs/dev/feature-lifecycle.md):
+PLAN → IMPLEMENT → VERIFY → TEST → REVIEW → DOCUMENT → CLOSE
+
+Key rules:
+- **Atomicity:** split large tasks into independent subtasks, each runs through the full lifecycle
+- **Tests:** unit tests (Vitest) always, E2E tests (Playwright) by default (skip only if no UI/flow change — justify explicitly)
+- **Review:** fix ALL findings (defer to backlog only if fix is out of scope)
+- **Document:** update `docs/plan/`, issue backlogs, MEMORY.md, and CLAUDE.md/AGENTS.md as needed
+
 ## Phase Tracking
 
 When completing a phase:

@@ -80,7 +80,7 @@ export function GoalStep() {
               className={cn(
                 "h-auto min-h-14 px-4 py-3 text-left justify-start whitespace-normal",
                 learningGoal === option.value &&
-                  "border-primary bg-primary/5 ring-1 ring-primary",
+                  "border-primary bg-primary/10 ring-1 ring-primary",
               )}
             >
               <div>

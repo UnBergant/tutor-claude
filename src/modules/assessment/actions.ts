@@ -61,7 +61,7 @@ const learningGoalSchema = z.enum([
 ]);
 
 const submitAnswerSchema = z.object({
-  assessmentId: z.string().uuid(),
+  assessmentId: z.string().cuid(),
   answer: z.string().min(1).max(500),
 });
 

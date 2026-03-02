@@ -24,7 +24,7 @@ export function BlockTransition({
       : 0;
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-4">
+    <div className="w-full max-w-2xl mx-auto space-y-4 animate-scale-in">
       <Card>
         <CardContent className="py-8">
           <div className="text-center space-y-4">

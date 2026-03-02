@@ -46,7 +46,7 @@ src/
 │   │   ├── components/     # UI components
 │   │   ├── actions.ts      # Server Actions
 │   │   ├── store.ts        # Zustand store (complex state)
-│   │   └── hooks.ts        # React hooks + TanStack Query
+│   │   └── hooks.ts        # React hooks
 │   ├── exercise/
 │   ├── chat/
 │   ├── lesson/

@@ -66,7 +66,7 @@ export default async function LessonsPage() {
     allActiveCompleted && activeModule!.lessons.length < 4;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 stagger-fade-in">
       {/* Continue Learning — hero */}
       {activeModule ? (
         <section>

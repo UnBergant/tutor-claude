@@ -4,7 +4,7 @@ import { Card } from "@/shared/ui/card";
 
 export default function LoginPage() {
   return (
-    <Card className="w-full max-w-sm space-y-6 p-8">
+    <Card className="w-full max-w-sm space-y-6 p-8 animate-scale-in">
       <div className="space-y-2 text-center">
         <h1 className="text-3xl font-bold tracking-tight text-primary">
           Celestia

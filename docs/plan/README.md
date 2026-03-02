@@ -12,7 +12,7 @@
 | 1 | [Auth, Database & App Shell](phase-1-auth-app-shell.md) | ✅ Done |
 | 2 | [Assessment Engine](phase-2-assessment.md) | ✅ Done |
 | 3 | [Exercise Engine & Curriculum](phase-3-exercises-curriculum.md) | ✅ Done |
-| 4 | [Progress, SRS & Gamification](phase-4-progress.md) | 🔄 In Progress |
+| 4 | [Progress, SRS & Gamification](phase-4-progress.md) | ✅ Done |
 | 5 | [Chat with Celestia](phase-5-chat.md) | ⏳ Pending |
 | 6 | [Design Polish & Production](phase-6-polish-deploy.md) | ⏳ Pending |
 
