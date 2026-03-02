@@ -43,6 +43,9 @@ src/generated/
 
 # claude code
 .claude/settings.local.json
+.claude/lifecycle-state.json
+.claude/lifecycle-state.done.json
+.claude/review-findings.md
 
 # legacy
 /tmp

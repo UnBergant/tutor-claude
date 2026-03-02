@@ -306,6 +306,53 @@
   animation-delay: 540ms;
 }
 
+/* ── Chat markdown — conversational, not article-like ── */
+.chat-markdown > *:first-child {
+  margin-top: 0;
+}
+.chat-markdown > *:last-child {
+  margin-bottom: 0;
+}
+
+/* Suppress headers — downgrade to inline semibold */
+.chat-markdown h1,
+.chat-markdown h2,
+.chat-markdown h3,
+.chat-markdown h4 {
+  font-size: inherit;
+  font-weight: 600;
+  margin: 0.375rem 0 0.125rem;
+}
+
+/* Bold — semibold, not heavy */
+.chat-markdown strong {
+  font-weight: 600;
+}
+
+/* Italic — slightly recessed for English asides */
+.chat-markdown em {
+  opacity: 0.8;
+}
+
+/* Lists — compact */
+.chat-markdown ul,
+.chat-markdown ol {
+  margin: 0.25rem 0;
+  padding-left: 1.25rem;
+}
+.chat-markdown li {
+  margin-bottom: 0.125rem;
+}
+
+/* Blockquote — for set-apart phrases */
+.chat-markdown blockquote {
+  border-left: 2px solid var(--primary);
+  padding-left: 0.75rem;
+  margin: 0.375rem 0;
+  opacity: 0.9;
+  font-style: italic;
+}
+
 /* Respects reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   .stagger-fade-in > *,

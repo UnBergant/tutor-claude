@@ -3,7 +3,7 @@ import { checkAiLimit, getAiSettings, recordAiUsage } from "./rate-limiter";
 
 let client: Anthropic | null = null;
 
-function getClient(): Anthropic {
+export function getClient(): Anthropic {
   if (!client) {
     client = new Anthropic({ maxRetries: 5 });
   }

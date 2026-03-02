@@ -323,6 +323,7 @@ model UserInterest {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, topic])
   @@index([userId])
 }
 
