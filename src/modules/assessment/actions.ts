@@ -490,7 +490,7 @@ function toClientItem(
       before,
       after,
       hint: hintMatchesAnswer(gf.hint, fullItem.correctAnswer)
-        ? undefined
+        ? TOPIC_BY_ID.get(fullItem.topicId)?.title
         : gf.hint,
       translation: gf.translation,
     };

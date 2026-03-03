@@ -157,7 +157,7 @@ async function generateGapFill(
     after: sanitized.after,
     correctAnswer: data.correctAnswer,
     hint: hintMatchesAnswer(data.hint, data.correctAnswer)
-      ? undefined
+      ? topic.title
       : data.hint,
     translation: data.translation,
     explanation: data.explanation,
