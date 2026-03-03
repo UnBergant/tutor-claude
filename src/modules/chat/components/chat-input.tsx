@@ -13,13 +13,31 @@ interface ChatInputProps {
  * Chat text input with send button.
  * - Enter to send, Shift+Enter for new line
  * - 1s cooldown after sending to prevent spam
- * - Auto-focuses on mount
+ * - Auto-focuses on mount and after assistant reply (desktop only)
  */
 export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const [value, setValue] = useState("");
   const [cooldown, setCooldown] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const prevDisabledRef = useRef(disabled);
+
+  // Auto-focus on mount
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
+
+  // Re-focus when disabled transitions true → false (assistant reply finished)
+  // Only on devices with a fine pointer (desktop) to avoid keyboard popup on mobile
+  useEffect(() => {
+    if (prevDisabledRef.current && !disabled) {
+      const hasFinePointer = window.matchMedia("(pointer: fine)").matches;
+      if (hasFinePointer) {
+        textareaRef.current?.focus();
+      }
+    }
+    prevDisabledRef.current = disabled;
+  }, [disabled]);
 
   // Cleanup cooldown timer on unmount
   useEffect(() => {

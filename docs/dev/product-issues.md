@@ -62,7 +62,7 @@ Collected during development and testing. Open items grouped by phase and featur
 - [ ] **Inline quick-quiz** — Celestia inserts MC/gap-fill exercises directly into chat messages. User answers via buttons/input, Celestia reacts with feedback and continues the conversation. Requires: structured message types (text vs exercise), exercise rendering inside message bubbles, answer submission without leaving chat.
 - [ ] **Tap-to-translate** — words in Celestia's messages are tappable/clickable, showing translation and grammar info (part of speech, conjugation form) in a tooltip/popover. Helps vocabulary acquisition passively during conversation.
 - [ ] **Vocabulary flashcards in chat** — Celestia shows a flashcard with an English word/phrase, user types the Spanish translation. Celestia checks the answer, provides feedback, and moves to the next card. Integrates with existing SRS vocabulary — prioritizes words due for review.
-- [ ] **Auto-focus input after assistant reply** — when Celestia finishes responding, focus should automatically move to the chat input field so the user can immediately start typing without clicking.
+- [x] **Auto-focus input after assistant reply** — auto-focus on mount + re-focus after streaming ends (desktop only via `pointer: fine` guard to avoid mobile keyboard popup). (KAN-15, phase-6a)
 
 ### Assessment Improvements
 
