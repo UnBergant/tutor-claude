@@ -72,7 +72,7 @@ Collected during development and testing. Open items grouped by phase and featur
 
 ### Progress & Gamification
 
-- [ ] **Streak timezone awareness** — `calculateStreak()` uses `setHours(0,0,0,0)` (server-local time). If the server runs in UTC and the user is in UTC+3, "today" differs. Store user timezone in `UserProfile` or normalize to UTC consistently.
+- [x] **Streak timezone awareness** — `startOfDay()` now uses `toLocaleString` with user's IANA timezone. Auto-detected via `Intl.DateTimeFormat` on client, cached in localStorage, validated before DB write. Fallback to UTC for invalid values. (KAN-16, phase-6a)
 
 ### Infrastructure & Testing
 
