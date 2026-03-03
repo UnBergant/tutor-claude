@@ -91,7 +91,6 @@ export function AssessmentFlow() {
         return;
       }
 
-      // Immediately show next question
       if (result.nextItem) {
         setCurrentItem(result.nextItem);
       }
@@ -128,7 +127,7 @@ export function AssessmentFlow() {
     <ExerciseShell
       current={Math.min(questionNumber, MAX_ITEMS)}
       total={MAX_ITEMS}
-      loading={isSubmitting}
+      submitting={isSubmitting}
     >
       {currentItem.exerciseType === "gap_fill" && (
         <GapFill

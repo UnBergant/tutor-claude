@@ -12,6 +12,8 @@ interface ExerciseShellProps {
   title?: string;
   /** Whether to show a loading skeleton */
   loading?: boolean;
+  /** Whether an answer is being submitted (shows shimmer overlay) */
+  submitting?: boolean;
   children: React.ReactNode;
 }
 
@@ -20,6 +22,7 @@ export function ExerciseShell({
   total,
   title,
   loading,
+  submitting,
   children,
 }: ExerciseShellProps) {
   const progress = (current / total) * 100;
@@ -36,7 +39,12 @@ export function ExerciseShell({
         <Progress value={progress} />
       </div>
 
-      <Card>
+      <Card className="relative overflow-hidden" aria-busy={submitting}>
+        {submitting && (
+          <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
+            <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-primary/[0.07] to-transparent" />
+          </div>
+        )}
         {title && (
           <CardHeader>
             <CardTitle className="text-base">{title}</CardTitle>
