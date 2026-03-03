@@ -10,6 +10,11 @@ if [ ! -f "$STATE_FILE" ]; then
   exit 0
 fi
 
+# Clear awaitingCompact flag — compact just happened, IMPLEMENT can proceed
+if jq -e '.awaitingCompact == true' "$STATE_FILE" > /dev/null 2>&1; then
+  jq '.awaitingCompact = false' "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+fi
+
 echo "=== ACTIVE LIFECYCLE STATE ==="
 echo "Read this carefully. You are in the middle of a lifecycle-managed task."
 echo ""
