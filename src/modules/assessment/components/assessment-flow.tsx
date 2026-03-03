@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { ExerciseShell } from "@/modules/exercise/components/exercise-shell";
 import { GapFill } from "@/modules/exercise/components/gap-fill";
 import { MultipleChoice } from "@/modules/exercise/components/multiple-choice";
@@ -96,6 +97,7 @@ export function AssessmentFlow() {
       }
     } catch (error) {
       console.error("Failed to submit answer:", error);
+      toast.error("Failed to submit your answer. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
