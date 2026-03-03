@@ -69,6 +69,7 @@ export function MultipleChoice({
               onClick={() => handleSelect(index)}
               className={cn(
                 "h-auto min-h-11 px-4 py-3 text-left justify-start text-base font-normal whitespace-normal transition-all duration-300",
+                isSelected && !showResult && "border-primary bg-primary/10",
                 showResult &&
                   isCorrect &&
                   "border-green-500 bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700 animate-pulse-once",

@@ -129,32 +129,34 @@ export function AssessmentFlow() {
       total={MAX_ITEMS}
       submitting={isSubmitting}
     >
-      {currentItem.exerciseType === "gap_fill" && (
-        <GapFill
-          key={currentItem.topicId}
-          before={currentItem.before ?? ""}
-          after={currentItem.after ?? ""}
-          hint={currentItem.hint}
-          translation={currentItem.translation}
-          feedback={null}
-          onSubmit={handleSubmit}
-          disabled={isSubmitting}
-          submitLabel="Continue"
-        />
-      )}
-
-      {currentItem.exerciseType === "multiple_choice" &&
-        currentItem.options && (
-          <MultipleChoice
+      <div key={questionNumber} className="animate-fade-in-up">
+        {currentItem.exerciseType === "gap_fill" && (
+          <GapFill
             key={currentItem.topicId}
-            prompt={currentItem.prompt}
-            options={currentItem.options}
+            before={currentItem.before ?? ""}
+            after={currentItem.after ?? ""}
+            hint={currentItem.hint}
+            translation={currentItem.translation}
             feedback={null}
-            correctIndex={-1}
             onSubmit={handleSubmit}
             disabled={isSubmitting}
+            submitLabel="Continue"
           />
         )}
+
+        {currentItem.exerciseType === "multiple_choice" &&
+          currentItem.options && (
+            <MultipleChoice
+              key={currentItem.topicId}
+              prompt={currentItem.prompt}
+              options={currentItem.options}
+              feedback={null}
+              correctIndex={-1}
+              onSubmit={handleSubmit}
+              disabled={isSubmitting}
+            />
+          )}
+      </div>
     </ExerciseShell>
   );
 }

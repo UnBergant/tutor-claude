@@ -12,11 +12,13 @@ export function OnboardingFlow() {
 
   return (
     <div className="w-full max-w-2xl mx-auto px-4">
-      {step === "welcome" && <WelcomeStep />}
-      {step === "experience" && <ExperienceStep />}
-      {step === "goal" && <GoalStep />}
-      {step === "assessment" && <AssessmentFlow />}
-      {step === "results" && <AssessmentResults />}
+      <div key={step} className="animate-fade-in-up">
+        {step === "welcome" && <WelcomeStep />}
+        {step === "experience" && <ExperienceStep />}
+        {step === "goal" && <GoalStep />}
+        {step === "assessment" && <AssessmentFlow />}
+        {step === "results" && <AssessmentResults />}
+      </div>
     </div>
   );
 }
