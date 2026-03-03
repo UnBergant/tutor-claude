@@ -54,8 +54,13 @@ export function calculateStreak(
 }
 
 function startOfDay(date: Date, timezone = "UTC"): Date {
-  // Format date in target timezone, then parse back to get midnight in that timezone
-  const str = date.toLocaleString("en-US", { timeZone: timezone });
+  let str: string;
+  try {
+    str = date.toLocaleString("en-US", { timeZone: timezone });
+  } catch {
+    // Invalid timezone in DB — fall back to UTC
+    str = date.toLocaleString("en-US", { timeZone: "UTC" });
+  }
   const local = new Date(str);
   local.setHours(0, 0, 0, 0);
   return local;

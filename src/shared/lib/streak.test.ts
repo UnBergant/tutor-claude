@@ -177,5 +177,19 @@ describe("calculateStreak", () => {
       );
       expect(result.currentStreak).toBe(4);
     });
+
+    it("falls back to UTC for invalid timezone", () => {
+      const result = calculateStreak(
+        {
+          lastActivityDate: new Date("2025-03-14T20:00:00Z"),
+          currentStreak: 3,
+          longestStreak: 7,
+          timezone: "Invalid/Zone",
+        },
+        now,
+      );
+      // Same as UTC behavior — doesn't crash
+      expect(result.currentStreak).toBe(4);
+    });
   });
 });
