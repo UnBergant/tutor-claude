@@ -787,6 +787,7 @@ export async function completeLesson(
         lastActivityDate: true,
         currentStreak: true,
         longestStreak: true,
+        timezone: true,
       },
     });
 
@@ -794,6 +795,7 @@ export async function completeLesson(
       lastActivityDate: profile?.lastActivityDate ?? null,
       currentStreak: profile?.currentStreak ?? 0,
       longestStreak: profile?.longestStreak ?? 0,
+      timezone: profile?.timezone ?? "UTC",
     });
 
     await prisma.userProfile.updateMany({

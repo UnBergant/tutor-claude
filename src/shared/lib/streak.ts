@@ -8,6 +8,7 @@ export interface StreakInput {
   lastActivityDate: Date | null;
   currentStreak: number;
   longestStreak: number;
+  timezone?: string;
 }
 
 export interface StreakResult {
@@ -26,9 +27,10 @@ export function calculateStreak(
   input: StreakInput,
   now: Date = new Date(),
 ): StreakResult {
-  const today = startOfDay(now);
+  const tz = input.timezone;
+  const today = startOfDay(now, tz);
   const lastActivity = input.lastActivityDate
-    ? startOfDay(input.lastActivityDate)
+    ? startOfDay(input.lastActivityDate, tz)
     : null;
 
   let newStreak: number;
@@ -51,10 +53,12 @@ export function calculateStreak(
   };
 }
 
-function startOfDay(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
+function startOfDay(date: Date, timezone = "UTC"): Date {
+  // Format date in target timezone, then parse back to get midnight in that timezone
+  const str = date.toLocaleString("en-US", { timeZone: timezone });
+  const local = new Date(str);
+  local.setHours(0, 0, 0, 0);
+  return local;
 }
 
 function isYesterday(lastActivity: Date, today: Date): boolean {

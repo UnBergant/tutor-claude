@@ -120,6 +120,7 @@ model UserProfile {
   currentLevel      String    @default("A1")
   learningGoal      String?
   interfaceLanguage String    @default("en")
+  timezone          String    @default("UTC")
   lastActivityDate  DateTime?
   currentStreak     Int       @default(0)
   longestStreak     Int       @default(0)
