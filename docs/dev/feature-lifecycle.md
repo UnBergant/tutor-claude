@@ -55,7 +55,7 @@ A fresh context ensures the agent has room for the full cycle — planning, impl
   - Architecture rules (FSD-lite, import boundaries, SRP)
   - Product requirements (`docs/PRODUCT.md`)
   - Design decisions (`docs/dev/styling.md`, `docs/dev/design-issues.md`)
-  - Open issues in `product-issues.md` or `design-issues.md`
+  - Open issues in `design-issues.md`
 - **If conflict found** → notify the user before proceeding
 
 #### d. Plan Review
@@ -165,7 +165,7 @@ npm run test:e2e   # all E2E tests pass
 - Defer to backlog **only if** the fix:
   - Requires architectural changes outside the current task scope
   - Risks regression in unrelated modules
-- Deferred items → add to `product-issues.md` or `design-issues.md` with phase tag
+- Deferred items → add to `design-issues.md` with phase tag, or create a Jira issue
 - After fixes: re-run VERIFY step (build + lint + manual check)
 
 ---
@@ -175,7 +175,6 @@ npm run test:e2e   # all E2E tests pass
 **Goal:** keep project docs in sync with reality.
 
 - [ ] `docs/plan/` — update task spec, mark as ✅ Done
-- [ ] `product-issues.md` — close resolved items, add newly discovered
 - [ ] `design-issues.md` — close resolved items, add newly discovered
 - [ ] `MEMORY.md` — record architectural decisions, new patterns, key learnings
 - [ ] `CLAUDE.md` / `AGENTS.md` — update if project structure changed (new modules, new shared libs, new routes)
