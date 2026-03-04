@@ -37,7 +37,7 @@ CRITICAL — output format:
 - "before": words BEFORE the blank (no underscores/placeholders)
 - "after": words AFTER the blank (no underscores/placeholders)
 - "correctAnswer": the exact word(s) for the blank
-- "hint": Spanish BASE FORM (infinitive for verbs, singular for nouns, masc. singular for adjectives, components for contractions like "a + el")
+- "hint": Spanish BASE FORM (infinitive for verbs, singular for nouns, masc. singular for adjectives, components for contractions like "a + el"). IMPORTANT: If the base form IS the correct answer (pronouns, articles, invariable words), provide a SEMANTIC hint instead (English translation, category, or context — e.g., "1st person singular" for "yo"). The hint must ALWAYS differ from correctAnswer.
 - "translation": full English translation of the complete sentence
 - "explanation": detailed grammar explanation in English (2-3 sentences — explain the rule, not just the answer)
 - "confidence": your confidence that this exercise is correct Castellano (0.0-1.0)

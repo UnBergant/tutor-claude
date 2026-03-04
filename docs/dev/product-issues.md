@@ -62,17 +62,17 @@ Collected during development and testing. Open items grouped by phase and featur
 - [ ] **Inline quick-quiz** — Celestia inserts MC/gap-fill exercises directly into chat messages. User answers via buttons/input, Celestia reacts with feedback and continues the conversation. Requires: structured message types (text vs exercise), exercise rendering inside message bubbles, answer submission without leaving chat.
 - [ ] **Tap-to-translate** — words in Celestia's messages are tappable/clickable, showing translation and grammar info (part of speech, conjugation form) in a tooltip/popover. Helps vocabulary acquisition passively during conversation.
 - [ ] **Vocabulary flashcards in chat** — Celestia shows a flashcard with an English word/phrase, user types the Spanish translation. Celestia checks the answer, provides feedback, and moves to the next card. Integrates with existing SRS vocabulary — prioritizes words due for review.
-- [ ] **Auto-focus input after assistant reply** — when Celestia finishes responding, focus should automatically move to the chat input field so the user can immediately start typing without clicking.
+- [x] **Auto-focus input after assistant reply** — auto-focus on mount + re-focus after streaming ends (desktop only via `pointer: fine` guard to avoid mobile keyboard popup). (KAN-15, phase-6a)
 
 ### Assessment Improvements
 
 - [ ] **"Back" button to change answer** — allow the user to go back to the previous question and re-answer it. Requires storing answer history and reverting Bayesian state.
-- [ ] **Submit error toast** — when `submitAssessmentAnswer` fails, show a user-facing toast/error instead of only `console.error`. Currently the user sees no feedback if an answer fails to submit.
-- [ ] **Gap-fill hint = answer fix** — full solution for non-morphology topics where the base form IS the answer (pronouns, nouns). Current workaround: suppress hint when hint=correctAnswer.
+- [x] **Submit error toast** — added `toast.error()` via Sonner when `submitAssessmentAnswer` fails. (KAN-12, phase-6a)
+- [x] **Gap-fill hint = answer fix** — two-layer fix: AI prompts request semantic hints for invariable words + code fallback uses `topic.title` when `hintMatchesAnswer()`. (KAN-13, phase-6a)
 
 ### Progress & Gamification
 
-- [ ] **Streak timezone awareness** — `calculateStreak()` uses `setHours(0,0,0,0)` (server-local time). If the server runs in UTC and the user is in UTC+3, "today" differs. Store user timezone in `UserProfile` or normalize to UTC consistently.
+- [x] **Streak timezone awareness** — `startOfDay()` now uses `toLocaleString` with user's IANA timezone. Auto-detected via `Intl.DateTimeFormat` on client, cached in localStorage, validated before DB write. Fallback to UTC for invalid values. (KAN-16, phase-6a)
 
 ### Infrastructure & Testing
 

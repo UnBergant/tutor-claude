@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { ExerciseShell } from "@/modules/exercise/components/exercise-shell";
 import { GapFill } from "@/modules/exercise/components/gap-fill";
 import { MultipleChoice } from "@/modules/exercise/components/multiple-choice";
@@ -90,12 +91,12 @@ export function AssessmentFlow() {
         return;
       }
 
-      // Immediately show next question
       if (result.nextItem) {
         setCurrentItem(result.nextItem);
       }
     } catch (error) {
       console.error("Failed to submit answer:", error);
+      toast.error("Failed to submit your answer. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -126,34 +127,36 @@ export function AssessmentFlow() {
     <ExerciseShell
       current={Math.min(questionNumber, MAX_ITEMS)}
       total={MAX_ITEMS}
-      loading={isSubmitting}
+      submitting={isSubmitting}
     >
-      {currentItem.exerciseType === "gap_fill" && (
-        <GapFill
-          key={currentItem.topicId}
-          before={currentItem.before ?? ""}
-          after={currentItem.after ?? ""}
-          hint={currentItem.hint}
-          translation={currentItem.translation}
-          feedback={null}
-          onSubmit={handleSubmit}
-          disabled={isSubmitting}
-          submitLabel="Continue"
-        />
-      )}
-
-      {currentItem.exerciseType === "multiple_choice" &&
-        currentItem.options && (
-          <MultipleChoice
+      <div key={questionNumber} className="animate-fade-in-up">
+        {currentItem.exerciseType === "gap_fill" && (
+          <GapFill
             key={currentItem.topicId}
-            prompt={currentItem.prompt}
-            options={currentItem.options}
+            before={currentItem.before ?? ""}
+            after={currentItem.after ?? ""}
+            hint={currentItem.hint}
+            translation={currentItem.translation}
             feedback={null}
-            correctIndex={-1}
             onSubmit={handleSubmit}
             disabled={isSubmitting}
+            submitLabel="Continue"
           />
         )}
+
+        {currentItem.exerciseType === "multiple_choice" &&
+          currentItem.options && (
+            <MultipleChoice
+              key={currentItem.topicId}
+              prompt={currentItem.prompt}
+              options={currentItem.options}
+              feedback={null}
+              correctIndex={-1}
+              onSubmit={handleSubmit}
+              disabled={isSubmitting}
+            />
+          )}
+      </div>
     </ExerciseShell>
   );
 }

@@ -27,6 +27,7 @@ CRITICAL — split the sentence into exactly two parts around the blank:
 - "after": only the words AFTER the blank, no underscores or placeholders
 - "correctAnswer": the exact word(s) that fill the blank
 - "hint": the Spanish BASE FORM of the target word shown next to the blank in parentheses — infinitive for verbs, singular for nouns, masc. singular for adjectives, or the components for contractions (e.g. "a + el"). This tells the student EXACTLY which word to transform.
+- IMPORTANT: If the base form IS identical to the correct answer (e.g., pronouns like "yo", articles like "el", invariable words), provide a SEMANTIC hint instead: the English translation, grammatical category, or usage context (e.g., "1st person singular" for "yo", "definite article, masc." for "el"). The hint must ALWAYS differ from the correctAnswer.
 - "translation": the FULL English translation of the complete sentence. Shown below the Spanish sentence for context/meaning.
 - "explanation": brief grammar explanation in English
 
