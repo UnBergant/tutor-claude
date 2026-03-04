@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/shared/lib/utils";
 import type { ExerciseFeedback } from "@/shared/types/exercise";
 import { Button } from "@/shared/ui/button";
@@ -18,6 +18,8 @@ interface MultipleChoiceProps {
   onSubmit: (answer: string, selectedIndex: number) => void;
   /** Disable buttons */
   disabled?: boolean;
+  /** Default selected index (for back button prefill) */
+  defaultSelectedIndex?: number;
 }
 
 export function MultipleChoice({
@@ -27,13 +29,22 @@ export function MultipleChoice({
   correctIndex,
   onSubmit,
   disabled,
+  defaultSelectedIndex,
 }: MultipleChoiceProps) {
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(
+    defaultSelectedIndex ?? null,
+  );
+
+  // Track exercise identity to reset only on actual change, not initial mount
+  const exerciseKeyRef = useRef(`${prompt}|${JSON.stringify(options)}`);
 
   // Reset selection when exercise changes (new prompt = new exercise)
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional reset on exercise identity change
   useEffect(() => {
-    setSelectedIndex(null);
+    const key = `${prompt}|${JSON.stringify(options)}`;
+    if (key !== exerciseKeyRef.current) {
+      setSelectedIndex(null);
+      exerciseKeyRef.current = key;
+    }
   }, [prompt, options]);
 
   function handleSelect(index: number) {

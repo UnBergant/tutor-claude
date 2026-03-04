@@ -7,7 +7,11 @@ import { GapFill } from "@/modules/exercise/components/gap-fill";
 import { MultipleChoice } from "@/modules/exercise/components/multiple-choice";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
-import { startAssessment, submitAssessmentAnswer } from "../actions";
+import {
+  goBackAssessment,
+  startAssessment,
+  submitAssessmentAnswer,
+} from "../actions";
 import { MAX_ITEMS } from "../lib/bayesian";
 import { useAssessmentStore } from "../store";
 
@@ -29,6 +33,10 @@ export function AssessmentFlow() {
     setError,
     setResult,
     setStep,
+    previousAnswer,
+    setPreviousAnswer,
+    canGoBack,
+    setCanGoBack,
   } = useAssessmentStore();
 
   // Guard against React Strict Mode double-mount calling startAssessment twice
@@ -78,6 +86,7 @@ export function AssessmentFlow() {
   async function handleSubmit(answer: string, _selectedIndex?: number) {
     if (!assessmentId || isSubmitting) return;
 
+    setPreviousAnswer(null);
     setIsSubmitting(true);
     try {
       const result = await submitAssessmentAnswer(assessmentId, answer);
@@ -94,9 +103,29 @@ export function AssessmentFlow() {
       if (result.nextItem) {
         setCurrentItem(result.nextItem);
       }
+      setCanGoBack(result.canGoBack);
     } catch (error) {
       console.error("Failed to submit answer:", error);
       toast.error("Failed to submit your answer. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  // Go back to the previous question
+  async function handleGoBack() {
+    if (!assessmentId || isSubmitting || questionNumber <= 1) return;
+
+    setIsSubmitting(true);
+    try {
+      const result = await goBackAssessment(assessmentId);
+      setCurrentItem(result.item);
+      setQuestionNumber(result.questionNumber);
+      setPreviousAnswer(result.previousAnswer);
+      setCanGoBack(false);
+    } catch (error) {
+      console.error("Failed to go back:", error);
+      toast.error("Failed to go back. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -129,6 +158,19 @@ export function AssessmentFlow() {
       total={MAX_ITEMS}
       submitting={isSubmitting}
     >
+      {canGoBack && (
+        <div className="mb-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleGoBack}
+            disabled={isSubmitting}
+            className="text-muted-foreground"
+          >
+            ← Back
+          </Button>
+        </div>
+      )}
       <div key={questionNumber} className="animate-fade-in-up">
         {currentItem.exerciseType === "gap_fill" && (
           <GapFill
@@ -141,6 +183,7 @@ export function AssessmentFlow() {
             onSubmit={handleSubmit}
             disabled={isSubmitting}
             submitLabel="Continue"
+            defaultValue={previousAnswer ?? undefined}
           />
         )}
 
@@ -154,6 +197,11 @@ export function AssessmentFlow() {
               correctIndex={-1}
               onSubmit={handleSubmit}
               disabled={isSubmitting}
+              defaultSelectedIndex={
+                previousAnswer != null
+                  ? (currentItem.options?.indexOf(previousAnswer) ?? undefined)
+                  : undefined
+              }
             />
           )}
       </div>
