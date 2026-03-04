@@ -357,15 +357,18 @@ export async function goBackAssessment(
   const questionNumber = truncatedResponses.length + 1;
 
   // Atomically: delete last answer row + update metadata
-  await prisma.$transaction([
-    // Delete the most recent answer for this assessment
-    prisma.assessmentAnswer.deleteMany({
-      where: {
-        assessmentId,
-        topicId: previousItem.topicId,
-      },
-    }),
-    prisma.assessment.update({
+  // Use interactive transaction to find the exact row (same topic can appear twice)
+  await prisma.$transaction(async (tx) => {
+    // Find the most recent answer for this assessment + topic
+    const lastAnswer = await tx.assessmentAnswer.findFirst({
+      where: { assessmentId, topicId: previousItem.topicId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    });
+    if (lastAnswer) {
+      await tx.assessmentAnswer.delete({ where: { id: lastAnswer.id } });
+    }
+    await tx.assessment.update({
       where: { id: assessmentId },
       data: {
         questionsAsked: truncatedResponses.length,
@@ -377,8 +380,8 @@ export async function goBackAssessment(
           previousAnswer: undefined,
         }),
       },
-    }),
-  ]);
+    });
+  });
 
   // Convert previousItem to client item
   const clientItem = toClientItemFromFull(previousItem);
@@ -419,28 +422,37 @@ async function buildFullItem(
     userId,
   );
 
-  const fullItem: AssessmentItem = {
+  const base = {
     topicId: selected.topicId,
     level: selected.level,
     exerciseType: selected.exerciseType,
-    prompt:
-      selected.exerciseType === "gap_fill"
-        ? `${(aiItem as GeneratedGapFill).before}___${(aiItem as GeneratedGapFill).after}`
-        : (aiItem as GeneratedMultipleChoice).prompt,
-    options:
-      selected.exerciseType === "multiple_choice"
-        ? (aiItem as GeneratedMultipleChoice).options
-        : null,
-    correctAnswer:
-      selected.exerciseType === "gap_fill"
-        ? (aiItem as GeneratedGapFill).correctAnswer
-        : (aiItem as GeneratedMultipleChoice).correctAnswer,
-    explanation:
-      selected.exerciseType === "gap_fill"
-        ? (aiItem as GeneratedGapFill).explanation
-        : (aiItem as GeneratedMultipleChoice).explanation,
     difficulty: selected.difficulty,
   };
+
+  let fullItem: AssessmentItem;
+  if (selected.exerciseType === "gap_fill") {
+    const gf = aiItem as GeneratedGapFill;
+    fullItem = {
+      ...base,
+      prompt: `${gf.before}___${gf.after}`,
+      options: null,
+      correctAnswer: gf.correctAnswer,
+      explanation: gf.explanation,
+      hint: hintMatchesAnswer(gf.hint, gf.correctAnswer)
+        ? TOPIC_BY_ID.get(selected.topicId)?.title
+        : gf.hint,
+      translation: gf.translation,
+    };
+  } else {
+    const mc = aiItem as GeneratedMultipleChoice;
+    fullItem = {
+      ...base,
+      prompt: mc.prompt,
+      options: mc.options,
+      correctAnswer: mc.correctAnswer,
+      explanation: mc.explanation,
+    };
+  }
 
   return { fullItem, aiItem };
 }
@@ -592,10 +604,8 @@ function toClientItem(
       options: null,
       before,
       after,
-      hint: hintMatchesAnswer(gf.hint, fullItem.correctAnswer)
-        ? TOPIC_BY_ID.get(fullItem.topicId)?.title
-        : gf.hint,
-      translation: gf.translation,
+      hint: fullItem.hint,
+      translation: fullItem.translation,
     };
   }
 
@@ -626,7 +636,8 @@ function toClientItemFromFull(item: AssessmentItem): AssessmentClientItem {
       options: null,
       before: parts[0] ?? "",
       after: parts[1] ?? "",
-      // hint and translation are not stored in AssessmentItem, omit them
+      hint: item.hint,
+      translation: item.translation,
     };
   }
 

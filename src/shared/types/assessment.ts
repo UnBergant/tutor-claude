@@ -84,4 +84,8 @@ export interface AssessmentItem {
   explanation: string;
   /** Predicted difficulty for IRT calculation */
   difficulty: number;
+  /** Base form hint for gap_fill (stored for Back navigation) */
+  hint?: string;
+  /** English translation for gap_fill (stored for Back navigation) */
+  translation?: string;
 }

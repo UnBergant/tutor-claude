@@ -66,7 +66,7 @@ Collected during development and testing. Open items grouped by phase and featur
 
 ### Assessment Improvements
 
-- [ ] **"Back" button to change answer** — allow the user to go back to the previous question and re-answer it. Requires storing answer history and reverting Bayesian state.
+- [x] **"Back" button to change answer** — go back 1 step, re-answer with prefill. Server-side Bayesian state rebuild via `rebuildState()`, `goBackAssessment` action, `canGoBack` flag. Stores hint/translation in `AssessmentItem` for gap-fill restoration. (KAN-21, phase-6c)
 - [x] **Submit error toast** — added `toast.error()` via Sonner when `submitAssessmentAnswer` fails. (KAN-12, phase-6a)
 - [x] **Gap-fill hint = answer fix** — two-layer fix: AI prompts request semantic hints for invariable words + code fallback uses `topic.title` when `hintMatchesAnswer()`. (KAN-13, phase-6a)
 

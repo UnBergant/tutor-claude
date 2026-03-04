@@ -15,6 +15,15 @@ import {
 import { MAX_ITEMS } from "../lib/bayesian";
 import { useAssessmentStore } from "../store";
 
+/** Map indexOf -1 to undefined (for defaultSelectedIndex prop). */
+function indexOrUndefined(
+  arr: string[] | null | undefined,
+  value: string,
+): number | undefined {
+  const idx = arr?.indexOf(value) ?? -1;
+  return idx === -1 ? undefined : idx;
+}
+
 export function AssessmentFlow() {
   const {
     experienceLevel,
@@ -199,7 +208,7 @@ export function AssessmentFlow() {
               disabled={isSubmitting}
               defaultSelectedIndex={
                 previousAnswer != null
-                  ? (currentItem.options?.indexOf(previousAnswer) ?? undefined)
+                  ? indexOrUndefined(currentItem.options, previousAnswer)
                   : undefined
               }
             />
