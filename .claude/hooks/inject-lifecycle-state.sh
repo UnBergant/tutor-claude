@@ -1,6 +1,7 @@
 #!/bin/bash
 # SessionStart(compact) hook: re-injects lifecycle state into Claude's context
 # after context compression, so Claude doesn't lose track of the current step.
+# Part of lifecycle system: skill=~/.claude/skills/lifecycle/SKILL.md
 #
 # Output goes to stdout → injected as system context.
 

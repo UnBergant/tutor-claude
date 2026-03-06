@@ -1,10 +1,11 @@
 #!/bin/bash
 # PreToolUse(Agent) hook: blocks Agent tool calls when awaitingCompact is set.
+# Part of lifecycle system: skill=~/.claude/skills/lifecycle/SKILL.md
 #
 # The lifecycle sets awaitingCompact:true at two points:
 # 1. After `start` — blocks until /compact before SCOPE/PLAN begins
 # 2. After PLAN completes — blocks until /compact before IMPLEMENT begins
-# The SessionStart(compact) hook clears the flag.
+# The SessionStart(compact) hook (inject-lifecycle-state.sh) clears the flag.
 #
 # Exit codes:
 #   0 — allow (no flag, or no lifecycle active)
