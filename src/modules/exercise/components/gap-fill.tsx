@@ -23,6 +23,8 @@ interface GapFillProps {
   disabled?: boolean;
   /** Submit button label (default: "Check") */
   submitLabel?: string;
+  /** Default value to prefill (for back button) */
+  defaultValue?: string;
 }
 
 export function GapFill({
@@ -34,14 +36,21 @@ export function GapFill({
   onSubmit,
   disabled,
   submitLabel = "Check",
+  defaultValue,
 }: GapFillProps) {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(defaultValue ?? "");
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Track exercise identity to reset only on actual change, not initial mount
+  const exerciseKeyRef = useRef(`${before}|${after}`);
+
   // Reset value when exercise changes (before/after change = new exercise)
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional reset on exercise identity change
   useEffect(() => {
-    setValue("");
+    const key = `${before}|${after}`;
+    if (key !== exerciseKeyRef.current) {
+      setValue("");
+      exerciseKeyRef.current = key;
+    }
     inputRef.current?.focus();
   }, [before, after]);
 

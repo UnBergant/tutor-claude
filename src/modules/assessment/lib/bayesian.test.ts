@@ -7,6 +7,7 @@ import {
   findMostUncertainBoundary,
   irtProbability,
   levelConfidence,
+  rebuildState,
   topicDifficulty,
 } from "./bayesian";
 
@@ -182,5 +183,99 @@ describe("createInitialState", () => {
     expect(state.responses).toHaveLength(0);
     expect(state.phase).toBe(1);
     expect(state.classifiedLevel).toBeNull();
+  });
+});
+
+describe("rebuildState", () => {
+  it("returns initial state for empty responses", () => {
+    const state = rebuildState(0.0, 1.5, []);
+    expect(state.theta).toBe(0.0);
+    expect(state.se).toBe(1.5);
+    expect(state.responses).toHaveLength(0);
+    expect(state.phase).toBe(1);
+    expect(state.classifiedLevel).toBeNull();
+    expect(state.testedTopicIds).toHaveLength(0);
+  });
+
+  it("produces same result as sequential bayesianUpdate calls", () => {
+    const responses: [
+      string,
+      boolean,
+      number,
+      "gap_fill" | "multiple_choice",
+    ][] = [
+      ["topic-1", true, 0.5, "gap_fill"],
+      ["topic-2", false, 1.0, "multiple_choice"],
+      ["topic-3", true, -0.5, "gap_fill"],
+    ];
+
+    // Sequential updates
+    let state = createInitialState(0.0);
+    for (const [topicId, isCorrect, difficulty, exerciseType] of responses) {
+      state = bayesianUpdate(
+        state,
+        topicId,
+        isCorrect,
+        difficulty,
+        exerciseType,
+      );
+    }
+
+    // Rebuild from scratch
+    const rebuilt = rebuildState(0.0, 1.5, responses);
+
+    expect(rebuilt.theta).toBeCloseTo(state.theta, 10);
+    expect(rebuilt.se).toBeCloseTo(state.se, 10);
+    expect(rebuilt.phase).toBe(state.phase);
+    expect(rebuilt.classifiedLevel).toBe(state.classifiedLevel);
+    expect(rebuilt.testedTopicIds).toEqual(state.testedTopicIds);
+    expect(rebuilt.responses).toEqual(state.responses);
+  });
+
+  it("correctly replays phase transition at 6 items", () => {
+    // 6 responses should trigger phase 1 → 2 transition
+    const responses: [
+      string,
+      boolean,
+      number,
+      "gap_fill" | "multiple_choice",
+    ][] = Array.from({ length: 6 }, (_, i) => [
+      `topic-${i + 1}`,
+      i % 2 === 0,
+      0.0,
+      "gap_fill" as const,
+    ]);
+
+    const state = rebuildState(0.0, 1.5, responses);
+    expect(state.phase).toBe(2);
+    expect(state.classifiedLevel).not.toBeNull();
+    expect(state.responses).toHaveLength(6);
+  });
+
+  it("truncated responses produce earlier state (undo scenario)", () => {
+    const responses: [
+      string,
+      boolean,
+      number,
+      "gap_fill" | "multiple_choice",
+    ][] = [
+      ["topic-1", true, 0.5, "gap_fill"],
+      ["topic-2", false, 1.0, "multiple_choice"],
+      ["topic-3", true, -0.5, "gap_fill"],
+    ];
+
+    const fullState = rebuildState(0.0, 1.5, responses);
+    const undoState = rebuildState(0.0, 1.5, responses.slice(0, -1));
+
+    // Undo state should have fewer responses
+    expect(undoState.responses).toHaveLength(2);
+    expect(fullState.responses).toHaveLength(3);
+
+    // Undo state should NOT have the last topic in testedTopicIds
+    expect(undoState.testedTopicIds).not.toContain("topic-3");
+    expect(fullState.testedTopicIds).toContain("topic-3");
+
+    // Theta values should differ (different response history)
+    expect(undoState.theta).not.toBe(fullState.theta);
   });
 });

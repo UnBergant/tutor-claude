@@ -34,7 +34,6 @@ Key docs:
 - `docs/plan/` — phased implementation roadmap (Phase 0–6, function-first vertical slices)
 - `docs/dev/` — technical decision docs (architecture, AI integration, state, styling, testing, API design)
 - `docs/dev/design-issues.md` — design/UI polish backlog (Phase 6)
-- `docs/dev/product-issues.md` — product/UX improvements backlog (various phases)
 
 ## Current Codebase
 
@@ -69,7 +68,7 @@ Key rules:
 
 When completing a phase:
 1. Update `docs/plan/README.md` — mark the phase as `✅ Done`.
-2. Review `docs/dev/product-issues.md` and `docs/dev/design-issues.md` — resolve any open items tagged for this phase before closing it.
+2. Review `docs/dev/design-issues.md` — resolve any open items tagged for this phase before closing it.
 
 ## Codex CLI — Second Opinion Skills
 

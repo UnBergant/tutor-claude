@@ -1,6 +1,6 @@
 # Phase 6: Design Polish & Production
 
-> **Known issues:** see [design-issues.md](../dev/design-issues.md) and [product-issues.md](../dev/product-issues.md) (filter by "Phase 6")
+> **Known issues:** see [design-issues.md](../dev/design-issues.md) (filter by "Phase 6")
 
 ## Goal
 Full design system finalization, component catalog, mobile verification, E2E tests, production hardening. Runs after all features are built and UX is validated.

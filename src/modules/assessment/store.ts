@@ -40,6 +40,12 @@ interface AssessmentState {
   error: string | null;
   setError: (error: string | null) => void;
 
+  // Back button
+  previousAnswer: string | null;
+  setPreviousAnswer: (answer: string | null) => void;
+  canGoBack: boolean;
+  setCanGoBack: (canGoBack: boolean) => void;
+
   // Result
   result: AssessmentResult | null;
   setResult: (result: AssessmentResult) => void;
@@ -58,6 +64,8 @@ const initialState = {
   isGenerating: false,
   isSubmitting: false,
   error: null as string | null,
+  previousAnswer: null as string | null,
+  canGoBack: false,
   result: null as AssessmentResult | null,
 };
 
@@ -72,6 +80,8 @@ export const useAssessmentStore = create<AssessmentState>((set) => ({
   setIsGenerating: (isGenerating) => set({ isGenerating }),
   setIsSubmitting: (isSubmitting) => set({ isSubmitting }),
   setError: (error) => set({ error }),
+  setPreviousAnswer: (previousAnswer) => set({ previousAnswer }),
+  setCanGoBack: (canGoBack) => set({ canGoBack }),
   setResult: (result) => set({ result }),
   reset: () => set(initialState),
 }));

@@ -170,6 +170,28 @@ export function bayesianUpdate(
   };
 }
 
+/**
+ * Rebuild full BayesianState from original prior and response history.
+ * Used by goBackAssessment to reconstruct state after removing the last response.
+ */
+export function rebuildState(
+  thetaPrior: number,
+  sePrior: number,
+  responses: [string, boolean, number, AssessmentExerciseType][],
+): BayesianState {
+  // Start from initial state
+  let state = createInitialState(thetaPrior);
+  // sePrior is always 1.5 (from createInitialState), but override just in case
+  state = { ...state, sePrior };
+
+  // Replay each response through bayesianUpdate
+  for (const [topicId, isCorrect, difficulty, exerciseType] of responses) {
+    state = bayesianUpdate(state, topicId, isCorrect, difficulty, exerciseType);
+  }
+
+  return state;
+}
+
 // ──────────────────────────────────────────────
 // Level classification
 // ──────────────────────────────────────────────

@@ -34,6 +34,7 @@ import {
   createInitialState,
   levelConfidence,
   MAX_ITEMS,
+  rebuildState,
 } from "./lib/bayesian";
 import { buildGapMap } from "./lib/gap-map";
 import { type SelectedItem, selectNextTopic } from "./lib/item-selection";
@@ -63,6 +64,10 @@ const learningGoalSchema = z.enum([
 const submitAnswerSchema = z.object({
   assessmentId: z.string().cuid(),
   answer: z.string().min(1).max(500),
+});
+
+const goBackSchema = z.object({
+  assessmentId: z.string().cuid(),
 });
 
 // ──────────────────────────────────────────────
@@ -98,6 +103,17 @@ export interface SubmitAnswerResult {
   /** Final result (only when assessment complete) */
   result: AssessmentResult | null;
   /** Current question number (1-based) */
+  questionNumber: number;
+  /** Whether the user can go back to this question */
+  canGoBack: boolean;
+}
+
+export interface GoBackResult {
+  /** The previous item to re-display */
+  item: AssessmentClientItem;
+  /** The user's previous answer (for prefill) */
+  previousAnswer: string;
+  /** The question number we're going back to (1-based) */
   questionNumber: number;
 }
 
@@ -273,6 +289,8 @@ export async function submitAssessmentAnswer(
           ...meta,
           bayesianState: updatedState,
           currentItem: nextFullItem,
+          previousItem: currentItem,
+          previousAnswer: answer,
         }),
       },
     }),
@@ -284,6 +302,93 @@ export async function submitAssessmentAnswer(
     explanation: currentItem.explanation,
     nextItem: toClientItem(nextFullItem, aiItem, selected.exerciseType),
     result: null,
+    questionNumber,
+    canGoBack: true,
+  };
+}
+
+/**
+ * Go back one step in the assessment: undo the last answer and re-display
+ * the previous question with the user's previous answer prefilled.
+ */
+export async function goBackAssessment(
+  assessmentId: string,
+): Promise<GoBackResult> {
+  goBackSchema.parse({ assessmentId });
+
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Not authenticated");
+  const userId = session.user.id;
+
+  const assessment = await prisma.assessment.findUnique({
+    where: { id: assessmentId },
+  });
+
+  if (!assessment || assessment.userId !== userId) {
+    throw new Error("Assessment not found");
+  }
+  if (assessment.status !== "IN_PROGRESS") {
+    throw new Error("Assessment already completed");
+  }
+
+  const meta = assessment.metadata as unknown as {
+    bayesianState: BayesianState;
+    currentItem: AssessmentItem;
+    previousItem?: AssessmentItem;
+    previousAnswer?: string;
+    learningGoal: string;
+    experienceLevel: string;
+  };
+
+  if (!meta.previousItem || !meta.previousAnswer) {
+    throw new Error("Cannot go back: no previous item");
+  }
+
+  const { bayesianState, previousItem, previousAnswer } = meta;
+
+  // Remove last response and rebuild state
+  const truncatedResponses = bayesianState.responses.slice(0, -1);
+  const rebuiltState = rebuildState(
+    bayesianState.thetaPrior,
+    bayesianState.sePrior,
+    truncatedResponses,
+  );
+
+  const questionNumber = truncatedResponses.length + 1;
+
+  // Atomically: delete last answer row + update metadata
+  // Use interactive transaction to find the exact row (same topic can appear twice)
+  await prisma.$transaction(async (tx) => {
+    // Find the most recent answer for this assessment + topic
+    const lastAnswer = await tx.assessmentAnswer.findFirst({
+      where: { assessmentId, topicId: previousItem.topicId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    });
+    if (lastAnswer) {
+      await tx.assessmentAnswer.delete({ where: { id: lastAnswer.id } });
+    }
+    await tx.assessment.update({
+      where: { id: assessmentId },
+      data: {
+        questionsAsked: truncatedResponses.length,
+        metadata: toJsonValue({
+          ...meta,
+          bayesianState: rebuiltState,
+          currentItem: previousItem,
+          previousItem: undefined,
+          previousAnswer: undefined,
+        }),
+      },
+    });
+  });
+
+  // Convert previousItem to client item
+  const clientItem = toClientItemFromFull(previousItem);
+
+  return {
+    item: clientItem,
+    previousAnswer,
     questionNumber,
   };
 }
@@ -317,28 +422,37 @@ async function buildFullItem(
     userId,
   );
 
-  const fullItem: AssessmentItem = {
+  const base = {
     topicId: selected.topicId,
     level: selected.level,
     exerciseType: selected.exerciseType,
-    prompt:
-      selected.exerciseType === "gap_fill"
-        ? `${(aiItem as GeneratedGapFill).before}___${(aiItem as GeneratedGapFill).after}`
-        : (aiItem as GeneratedMultipleChoice).prompt,
-    options:
-      selected.exerciseType === "multiple_choice"
-        ? (aiItem as GeneratedMultipleChoice).options
-        : null,
-    correctAnswer:
-      selected.exerciseType === "gap_fill"
-        ? (aiItem as GeneratedGapFill).correctAnswer
-        : (aiItem as GeneratedMultipleChoice).correctAnswer,
-    explanation:
-      selected.exerciseType === "gap_fill"
-        ? (aiItem as GeneratedGapFill).explanation
-        : (aiItem as GeneratedMultipleChoice).explanation,
     difficulty: selected.difficulty,
   };
+
+  let fullItem: AssessmentItem;
+  if (selected.exerciseType === "gap_fill") {
+    const gf = aiItem as GeneratedGapFill;
+    fullItem = {
+      ...base,
+      prompt: `${gf.before}___${gf.after}`,
+      options: null,
+      correctAnswer: gf.correctAnswer,
+      explanation: gf.explanation,
+      hint: hintMatchesAnswer(gf.hint, gf.correctAnswer)
+        ? TOPIC_BY_ID.get(selected.topicId)?.title
+        : gf.hint,
+      translation: gf.translation,
+    };
+  } else {
+    const mc = aiItem as GeneratedMultipleChoice;
+    fullItem = {
+      ...base,
+      prompt: mc.prompt,
+      options: mc.options,
+      correctAnswer: mc.correctAnswer,
+      explanation: mc.explanation,
+    };
+  }
 
   return { fullItem, aiItem };
 }
@@ -416,6 +530,7 @@ async function completeAssessment(
     nextItem: null,
     result,
     questionNumber,
+    canGoBack: false,
   };
 }
 
@@ -489,10 +604,8 @@ function toClientItem(
       options: null,
       before,
       after,
-      hint: hintMatchesAnswer(gf.hint, fullItem.correctAnswer)
-        ? TOPIC_BY_ID.get(fullItem.topicId)?.title
-        : gf.hint,
-      translation: gf.translation,
+      hint: fullItem.hint,
+      translation: fullItem.translation,
     };
   }
 
@@ -503,5 +616,36 @@ function toClientItem(
     exerciseType: "multiple_choice",
     prompt: mc.prompt,
     options: mc.options,
+  };
+}
+
+/**
+ * Convert a stored AssessmentItem to a client item.
+ * Used by goBackAssessment where we don't have the original AI response.
+ * The prompt field already contains the full text, so we parse before/after from it.
+ */
+function toClientItemFromFull(item: AssessmentItem): AssessmentClientItem {
+  if (item.exerciseType === "gap_fill") {
+    // prompt format: "before___after"
+    const parts = item.prompt.split("___");
+    return {
+      topicId: item.topicId,
+      level: item.level,
+      exerciseType: "gap_fill",
+      prompt: item.prompt,
+      options: null,
+      before: parts[0] ?? "",
+      after: parts[1] ?? "",
+      hint: item.hint,
+      translation: item.translation,
+    };
+  }
+
+  return {
+    topicId: item.topicId,
+    level: item.level,
+    exerciseType: "multiple_choice",
+    prompt: item.prompt,
+    options: item.options,
   };
 }
