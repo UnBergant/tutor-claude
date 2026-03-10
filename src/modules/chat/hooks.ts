@@ -2,9 +2,39 @@
 
 import { MessageStream } from "@anthropic-ai/sdk/lib/MessageStream";
 import { useCallback, useEffect, useRef } from "react";
-import { extractChatData, translateMessage } from "./actions";
+import { extractChatData, getFlashcardWord, translateMessage } from "./actions";
 import { useChatStore } from "./store";
 import { useTranslationStore } from "./translation-store";
+import type { ChatMessage } from "./types";
+
+/**
+ * Determine if it's time to inject a flashcard into the chat.
+ *
+ * Rules:
+ * - At least 4 text messages in session before first flashcard
+ * - No pending flashcard already in messages
+ * - At least 6 text messages since the last flashcard (3 user + 3 assistant exchanges)
+ */
+export function shouldInsertFlashcard(messages: ChatMessage[]): boolean {
+  const textMessages = messages.filter((m) => m.type === "text");
+  const hasPending = messages.some(
+    (m) => m.type === "flashcard" && m.status === "pending",
+  );
+
+  if (hasPending || textMessages.length < 4) return false;
+
+  // Find last flashcard position
+  const lastFlashcardIndex = messages.findLastIndex(
+    (m) => m.type === "flashcard",
+  );
+  const messagesSinceFlashcard =
+    lastFlashcardIndex === -1
+      ? textMessages.length
+      : messages.slice(lastFlashcardIndex + 1).filter((m) => m.type === "text")
+          .length;
+
+  return messagesSinceFlashcard >= 6;
+}
 
 /**
  * Fire-and-forget translation of an assistant message.
@@ -56,11 +86,14 @@ export function useChat() {
     state.setIsStreaming(true);
     state.setError(null);
 
-    // Prepare messages for API (exclude IDs and dates — only role + content)
-    const apiMessages = useChatStore.getState().messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    // Prepare messages for API (only text messages — exclude flashcards)
+    const apiMessages = useChatStore
+      .getState()
+      .messages.filter((m) => m.type === "text")
+      .map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
 
     // Create empty assistant message placeholder
     const assistantMsg = useChatStore.getState().addAssistantMessage();
@@ -115,11 +148,28 @@ export function useChat() {
 
       // Fire-and-forget: translate the completed assistant message
       // TODO: auto-translate + chat requests share 5 req/min limit — consider on-demand translation
-      const finalContent = useChatStore
+      const finalMsg = useChatStore
         .getState()
-        .messages.find((m) => m.id === assistantMsg.id)?.content;
-      if (finalContent) {
-        translateAssistantMessage(assistantMsg.id, finalContent);
+        .messages.find((m) => m.id === assistantMsg.id);
+      if (finalMsg?.type === "text" && finalMsg.content) {
+        translateAssistantMessage(finalMsg.id, finalMsg.content);
+      }
+
+      // Fire-and-forget: inject a flashcard if conditions are met
+      try {
+        if (shouldInsertFlashcard(useChatStore.getState().messages)) {
+          const flashcardWord = await getFlashcardWord();
+          if (flashcardWord) {
+            useChatStore.getState().addFlashcardMessage({
+              wordId: flashcardWord.wordId,
+              word: flashcardWord.word,
+              prompt: flashcardWord.prompt,
+              hint: flashcardWord.hint ?? undefined,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("[useChat] Flashcard injection failed:", error);
       }
     } catch (error) {
       if ((error as Error).name === "AbortError") return;
@@ -139,12 +189,13 @@ export function useChat() {
 
     const messages = state.messages;
 
-    // Run extraction if there are enough messages
-    if (messages.length >= 4) {
+    // Run extraction if there are enough text messages
+    const textMessages = messages.filter((m) => m.type === "text");
+    if (textMessages.length >= 4) {
       state.setIsExtracting(true);
       try {
         await extractChatData(
-          messages.map((m) => ({ role: m.role, content: m.content })),
+          textMessages.map((m) => ({ role: m.role, content: m.content })),
         );
       } catch (error) {
         console.error("[useChat] Extraction failed:", error);
@@ -172,7 +223,7 @@ export function useChat() {
       if (starterMessage) {
         const messages = useChatStore.getState().messages;
         const firstMsg = messages[0];
-        if (firstMsg?.role === "assistant") {
+        if (firstMsg?.type === "text" && firstMsg.role === "assistant") {
           translateAssistantMessage(firstMsg.id, firstMsg.content);
         }
       }

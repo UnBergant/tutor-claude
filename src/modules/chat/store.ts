@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ChatMessage } from "./types";
+import type { ChatMessage, FlashcardMessage, TextMessage } from "./types";
 
 interface ChatState {
   /** Current session ID (random, for tracking) */
@@ -17,9 +17,20 @@ interface ChatState {
 
   // Actions
   startSession: (situationId: string | null, starterMessage?: string) => void;
-  addUserMessage: (content: string) => ChatMessage;
-  addAssistantMessage: () => ChatMessage;
+  addUserMessage: (content: string) => TextMessage;
+  addAssistantMessage: () => TextMessage;
   appendToAssistantMessage: (messageId: string, text: string) => void;
+  addFlashcardMessage: (data: {
+    wordId: string;
+    word: string;
+    prompt: string;
+    hint?: string;
+  }) => FlashcardMessage;
+  updateFlashcardStatus: (
+    messageId: string,
+    status: "correct" | "incorrect",
+    userAnswer: string,
+  ) => void;
   setIsStreaming: (v: boolean) => void;
   setIsExtracting: (v: boolean) => void;
   setError: (error: string | null) => void;
@@ -55,6 +66,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     if (starterMessage) {
       messages.push({
+        type: "text",
         id: generateMessageId(),
         role: "assistant",
         content: starterMessage,
@@ -71,7 +83,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   addUserMessage: (content) => {
-    const message: ChatMessage = {
+    const message: TextMessage = {
+      type: "text",
       id: generateMessageId(),
       role: "user",
       content,
@@ -82,7 +95,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   addAssistantMessage: () => {
-    const message: ChatMessage = {
+    const message: TextMessage = {
+      type: "text",
       id: generateMessageId(),
       role: "assistant",
       content: "",
@@ -94,7 +108,34 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   appendToAssistantMessage: (messageId, text) => {
     const messages = get().messages.map((m) =>
-      m.id === messageId ? { ...m, content: m.content + text } : m,
+      m.id === messageId && m.type === "text"
+        ? { ...m, content: m.content + text }
+        : m,
+    );
+    set({ messages });
+  },
+
+  addFlashcardMessage: (data) => {
+    const message: FlashcardMessage = {
+      type: "flashcard",
+      id: generateMessageId(),
+      role: "assistant",
+      wordId: data.wordId,
+      word: data.word,
+      prompt: data.prompt,
+      hint: data.hint,
+      status: "pending",
+      createdAt: new Date(),
+    };
+    set({ messages: [...get().messages, message] });
+    return message;
+  },
+
+  updateFlashcardStatus: (messageId, status, userAnswer) => {
+    const messages = get().messages.map((m) =>
+      m.id === messageId && m.type === "flashcard"
+        ? { ...m, status, userAnswer }
+        : m,
     );
     set({ messages });
   },

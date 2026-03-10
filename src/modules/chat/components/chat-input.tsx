@@ -3,6 +3,9 @@
 import { Send } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/shared/ui/button";
+import { submitFlashcardAnswer } from "../actions";
+import { useChatStore } from "../store";
+import type { FlashcardMessage } from "../types";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -21,6 +24,17 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
   const prevDisabledRef = useRef(disabled);
+
+  // Detect pending flashcard
+  const pendingFlashcard = useChatStore((s) => {
+    for (let i = s.messages.length - 1; i >= 0; i--) {
+      const m = s.messages[i];
+      if (m.type === "flashcard" && m.status === "pending") {
+        return m as FlashcardMessage;
+      }
+    }
+    return null;
+  });
 
   // Auto-focus on mount
   useEffect(() => {
@@ -50,7 +64,23 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     const trimmed = value.trim();
     if (!trimmed || disabled || cooldown) return;
 
-    onSend(trimmed);
+    if (pendingFlashcard) {
+      // Compare answer with expected word (case-insensitive, trimmed)
+      const correct =
+        trimmed.toLowerCase() === pendingFlashcard.word.trim().toLowerCase();
+      useChatStore
+        .getState()
+        .updateFlashcardStatus(
+          pendingFlashcard.id,
+          correct ? "correct" : "incorrect",
+          trimmed,
+        );
+      // Fire-and-forget: persist SRS update on server
+      submitFlashcardAnswer(pendingFlashcard.wordId, correct);
+    } else {
+      onSend(trimmed);
+    }
+
     setValue("");
     setCooldown(true);
 
@@ -60,7 +90,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     }
 
     cooldownTimerRef.current = setTimeout(() => setCooldown(false), 1000);
-  }, [value, disabled, cooldown, onSend]);
+  }, [value, disabled, cooldown, onSend, pendingFlashcard]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -87,7 +117,11 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           value={value}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
-          placeholder="Type in Spanish..."
+          placeholder={
+            pendingFlashcard
+              ? "Type the Spanish translation..."
+              : "Type in Spanish..."
+          }
           disabled={disabled}
           maxLength={2000}
           rows={1}
