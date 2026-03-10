@@ -3,7 +3,11 @@
 import { generateStructured } from "@/shared/lib/ai/client";
 import { auth } from "@/shared/lib/auth";
 import { saveChatExtractionData } from "./chat-helper";
-import type { ChatExtractionResult, ChatMessage } from "./types";
+import type {
+  ChatExtractionResult,
+  ChatMessage,
+  MessageTranslation,
+} from "./types";
 
 const EXTRACTION_SCHEMA = {
   type: "object",
@@ -113,5 +117,72 @@ export async function extractChatData(
   } catch (error) {
     console.error("[extractChatData] Failed:", error);
     return { success: false };
+  }
+}
+
+const TRANSLATION_SCHEMA = {
+  type: "object",
+  properties: {
+    words: {
+      type: "array",
+      description: "Translations for each Spanish word in the message",
+      items: {
+        type: "object",
+        properties: {
+          word: {
+            type: "string",
+            description: "Original word from the message",
+          },
+          translation: { type: "string", description: "English translation" },
+          partOfSpeech: {
+            type: "string",
+            description:
+              "Part of speech (e.g., 'noun', 'verb', 'adjective', 'adverb', 'preposition', 'article', 'pronoun', 'conjunction')",
+          },
+          form: {
+            type: "string",
+            description:
+              "Conjugation/inflection form for verbs (e.g., 'presente, 1a persona singular'). Omit for non-verbs.",
+          },
+        },
+        required: ["word", "translation", "partOfSpeech"],
+      },
+    },
+  },
+  required: ["words"],
+};
+
+/**
+ * Translate all Spanish words in a message using Haiku.
+ *
+ * Returns word-by-word translations with part of speech and optional verb form.
+ */
+export async function translateMessage(
+  messageText: string,
+): Promise<MessageTranslation> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { words: [] };
+  }
+
+  const userId = session.user.id;
+
+  try {
+    const { data } = await generateStructured<MessageTranslation>({
+      endpoint: "evaluation",
+      system:
+        "You are a Spanish-English translation assistant. Translate each Spanish word in context. For verbs, include the conjugation form (e.g., 'presente, 1a persona singular'). For non-Spanish words (English, punctuation, numbers), skip them.",
+      userMessage: messageText,
+      toolName: "translate_words",
+      toolDescription: "Translate all Spanish words in a message",
+      schema: TRANSLATION_SCHEMA,
+      userId,
+      maxTokens: 2048,
+    });
+
+    return data;
+  } catch (error) {
+    console.error("[translateMessage] Failed:", error);
+    return { words: [] };
   }
 }

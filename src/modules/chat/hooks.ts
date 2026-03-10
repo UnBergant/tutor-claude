@@ -2,8 +2,34 @@
 
 import { MessageStream } from "@anthropic-ai/sdk/lib/MessageStream";
 import { useCallback, useEffect, useRef } from "react";
-import { extractChatData } from "./actions";
+import { extractChatData, translateMessage } from "./actions";
 import { useChatStore } from "./store";
+import { useTranslationStore } from "./translation-store";
+
+/**
+ * Fire-and-forget translation of an assistant message.
+ * Exported so components can trigger it for starter messages too.
+ */
+const inflightTranslations = new Set<string>();
+
+export async function translateAssistantMessage(
+  messageId: string,
+  content: string,
+) {
+  const store = useTranslationStore.getState();
+  if (store.cache[messageId] || inflightTranslations.has(messageId)) return;
+  inflightTranslations.add(messageId);
+  store.setLoading(messageId, true);
+  try {
+    const result = await translateMessage(content);
+    useTranslationStore.getState().setTranslations(messageId, result.words);
+  } catch (error) {
+    console.error("[useChat] Translation failed:", error);
+  } finally {
+    inflightTranslations.delete(messageId);
+    useTranslationStore.getState().setLoading(messageId, false);
+  }
+}
 
 /**
  * Hook orchestrating chat store + fetch + SSE stream consumption.
@@ -86,6 +112,15 @@ export function useChat() {
       });
 
       await stream.done();
+
+      // Fire-and-forget: translate the completed assistant message
+      // TODO: auto-translate + chat requests share 5 req/min limit — consider on-demand translation
+      const finalContent = useChatStore
+        .getState()
+        .messages.find((m) => m.id === assistantMsg.id)?.content;
+      if (finalContent) {
+        translateAssistantMessage(assistantMsg.id, finalContent);
+      }
     } catch (error) {
       if ((error as Error).name === "AbortError") return;
       console.error("[useChat] Error:", error);
@@ -119,6 +154,7 @@ export function useChat() {
     }
 
     useChatStore.getState().reset();
+    useTranslationStore.getState().reset();
   }, []);
 
   // Cleanup: abort stream on unmount
@@ -128,6 +164,22 @@ export function useChat() {
     };
   }, []);
 
+  const startSession = useCallback(
+    (situationId: string | null, starterMessage?: string) => {
+      useChatStore.getState().startSession(situationId, starterMessage);
+
+      // Translate the starter message if present
+      if (starterMessage) {
+        const messages = useChatStore.getState().messages;
+        const firstMsg = messages[0];
+        if (firstMsg?.role === "assistant") {
+          translateAssistantMessage(firstMsg.id, firstMsg.content);
+        }
+      }
+    },
+    [],
+  );
+
   return {
     messages: store.messages,
     isStreaming: store.isStreaming,
@@ -136,7 +188,7 @@ export function useChat() {
     sessionId: store.sessionId,
     situationId: store.situationId,
     sendMessage,
-    startSession: store.startSession,
+    startSession,
     endSession,
     reset: store.reset,
   };

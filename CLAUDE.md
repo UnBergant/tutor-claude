@@ -42,7 +42,7 @@ Key docs:
 - Linting & formatting: Biome (double quotes, semicolons, 2-space indent).
 - Testing: Vitest (unit, colocated `*.test.ts`), Playwright (E2E, `tests/e2e/`).
 - Git hooks: Husky + lint-staged (pre-commit runs `biome check --write`).
-- shadcn/ui components in `src/shared/ui/` — Button, Card, Input, Dialog, Select, Tabs, Sonner, Badge, Progress, Avatar.
+- shadcn/ui components in `src/shared/ui/` — Button, Card, Input, Dialog, Select, Tabs, Sonner, Badge, Progress, Avatar, Popover.
 - Path alias: `@/*` → `src/*`.
 
 ## Architecture
