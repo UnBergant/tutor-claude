@@ -31,6 +31,19 @@ export interface ChatRequestBody {
   situationId: string | null;
 }
 
+/** Translation data for a single word */
+export interface WordTranslation {
+  word: string;
+  translation: string;
+  partOfSpeech: string;
+  form?: string;
+}
+
+/** Result of translating all words in a message */
+export interface MessageTranslation {
+  words: WordTranslation[];
+}
+
 /** Extracted data from a completed chat session */
 export interface ChatExtractionResult {
   vocabulary: {
