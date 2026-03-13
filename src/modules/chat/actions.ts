@@ -2,11 +2,13 @@
 
 import { generateStructured } from "@/shared/lib/ai/client";
 import { auth } from "@/shared/lib/auth";
+import { prisma } from "@/shared/lib/prisma";
+import { sm2 } from "@/shared/lib/srs";
 import { saveChatExtractionData } from "./chat-helper";
 import type {
   ChatExtractionResult,
-  ChatMessage,
   MessageTranslation,
+  TextMessage,
 } from "./types";
 
 const EXTRACTION_SCHEMA = {
@@ -80,7 +82,7 @@ const EXTRACTION_SCHEMA = {
  * and extract vocabulary, interests, and mistakes.
  */
 export async function extractChatData(
-  messages: Pick<ChatMessage, "role" | "content">[],
+  messages: Pick<TextMessage, "role" | "content">[],
 ): Promise<{ success: boolean }> {
   const session = await auth();
   if (!session?.user?.id) {
@@ -185,4 +187,92 @@ export async function translateMessage(
     console.error("[translateMessage] Failed:", error);
     return { words: [] };
   }
+}
+
+/**
+ * Get the next vocabulary word due for flashcard review.
+ *
+ * Prioritizes never-reviewed words (nextReviewAt IS NULL), then oldest due.
+ * Returns null if no words are due for review.
+ */
+export async function getFlashcardWord(): Promise<{
+  wordId: string;
+  word: string;
+  prompt: string;
+  hint: string | null;
+} | null> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return null;
+  }
+
+  const now = new Date();
+
+  const vocabularyWord = await prisma.vocabularyWord.findFirst({
+    where: {
+      userId: session.user.id,
+      OR: [{ nextReviewAt: null }, { nextReviewAt: { lte: now } }],
+    },
+    orderBy: {
+      nextReviewAt: { sort: "asc", nulls: "first" },
+    },
+  });
+
+  if (!vocabularyWord) {
+    return null;
+  }
+
+  return {
+    wordId: vocabularyWord.id,
+    word: vocabularyWord.word,
+    prompt: vocabularyWord.translation,
+    hint: vocabularyWord.context,
+  };
+}
+
+/**
+ * Submit a flashcard review answer and update SRS scheduling.
+ *
+ * Maps correct/incorrect to SM-2 quality:
+ *   correct=true  → quality 4 (correct after hesitation)
+ *   correct=false → quality 1 (incorrect; correct answer remembered on reveal)
+ */
+export async function submitFlashcardAnswer(
+  wordId: string,
+  correct: boolean,
+): Promise<void> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return;
+  }
+
+  const vocabularyWord = await prisma.vocabularyWord.findFirst({
+    where: {
+      id: wordId,
+      userId: session.user.id,
+    },
+  });
+
+  if (!vocabularyWord) {
+    return;
+  }
+
+  const quality = correct ? 4 : 1;
+
+  const result = sm2({
+    quality,
+    repetitions: vocabularyWord.repetitions,
+    easeFactor: vocabularyWord.easeFactor,
+    interval: vocabularyWord.interval,
+  });
+
+  await prisma.vocabularyWord.updateMany({
+    where: { id: wordId, userId: session.user.id },
+    data: {
+      repetitions: result.repetitions,
+      easeFactor: result.easeFactor,
+      interval: result.interval,
+      nextReviewAt: result.nextReviewAt,
+    },
+  });
 }

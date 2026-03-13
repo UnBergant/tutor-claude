@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { ChatMessage } from "../types";
+import { FlashcardBubble } from "./flashcard-bubble";
 import { MessageBubble } from "./message-bubble";
 import { TypingIndicator } from "./typing-indicator";
 
@@ -28,17 +29,21 @@ export function MessageList({ messages, isStreaming }: MessageListProps) {
     isStreaming &&
     (!lastMessage ||
       lastMessage.role !== "assistant" ||
-      lastMessage.content === "");
+      (lastMessage.type === "text" && lastMessage.content === ""));
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4">
       <div className="mx-auto flex max-w-2xl flex-col gap-3">
-        {messages.map((message) =>
+        {messages.map((message) => {
+          if (message.type === "flashcard") {
+            return <FlashcardBubble key={message.id} message={message} />;
+          }
           // Skip rendering empty assistant placeholders — typing indicator covers this
-          message.content === "" && message.role === "assistant" ? null : (
-            <MessageBubble key={message.id} message={message} />
-          ),
-        )}
+          if (message.content === "" && message.role === "assistant") {
+            return null;
+          }
+          return <MessageBubble key={message.id} message={message} />;
+        })}
         {showTyping && <TypingIndicator />}
         <div ref={bottomRef} />
       </div>

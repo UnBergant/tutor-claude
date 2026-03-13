@@ -1,13 +1,37 @@
 /** Chat message role */
 export type ChatRole = "user" | "assistant";
 
-/** A single chat message (ephemeral — lives only in Zustand store) */
-export interface ChatMessage {
+/** Base fields shared by all chat messages */
+interface ChatMessageBase {
   id: string;
-  role: ChatRole;
-  content: string;
   createdAt: Date;
 }
+
+/** Regular text message (user or assistant) */
+export interface TextMessage extends ChatMessageBase {
+  type: "text";
+  role: ChatRole;
+  content: string;
+}
+
+/** Flashcard quiz message from Celestia */
+export interface FlashcardMessage extends ChatMessageBase {
+  type: "flashcard";
+  role: "assistant";
+  wordId: string;
+  /** Spanish word (correct answer user must type) */
+  word: string;
+  /** English translation shown to user */
+  prompt: string;
+  /** Optional context sentence */
+  hint?: string;
+  status: "pending" | "correct" | "incorrect";
+  /** What the user typed */
+  userAnswer?: string;
+}
+
+/** Any chat message (ephemeral — lives only in Zustand store) */
+export type ChatMessage = TextMessage | FlashcardMessage;
 
 /** A predefined conversation scenario */
 export interface Situation {

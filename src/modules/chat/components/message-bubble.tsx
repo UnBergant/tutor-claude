@@ -6,7 +6,7 @@ import Markdown from "react-markdown";
 import { cn } from "@/shared/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { useTranslationStore } from "../translation-store";
-import type { ChatMessage } from "../types";
+import type { TextMessage } from "../types";
 
 // ---------------------------------------------------------------------------
 // Word tokenization
@@ -139,7 +139,7 @@ function wrapTextChildren(
 // ---------------------------------------------------------------------------
 
 interface MessageBubbleProps {
-  message: ChatMessage;
+  message: TextMessage;
 }
 
 /**

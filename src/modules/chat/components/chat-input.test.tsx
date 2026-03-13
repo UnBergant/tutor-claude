@@ -1,5 +1,11 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// Mock server actions to avoid next-auth/next-server import in vitest
+vi.mock("../actions", () => ({
+  submitFlashcardAnswer: vi.fn(),
+}));
+
 import { ChatInput } from "./chat-input";
 
 afterEach(cleanup);

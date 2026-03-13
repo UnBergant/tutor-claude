@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { useChatStore } from "./store";
+import type { FlashcardMessage, TextMessage } from "./types";
 
 function getState() {
   return useChatStore.getState();
@@ -36,8 +37,9 @@ describe("useChatStore", () => {
     it("adds starter message when provided", () => {
       getState().startSession("restaurant", "¡Hola! ¿Qué desea pedir?");
       expect(getState().messages).toHaveLength(1);
-      expect(getState().messages[0].role).toBe("assistant");
-      expect(getState().messages[0].content).toBe("¡Hola! ¿Qué desea pedir?");
+      const msg = getState().messages[0] as TextMessage;
+      expect(msg.role).toBe("assistant");
+      expect(msg.content).toBe("¡Hola! ¿Qué desea pedir?");
     });
 
     it("starts with empty messages when no starter", () => {
@@ -93,7 +95,9 @@ describe("useChatStore", () => {
       const msg = getState().addAssistantMessage();
       getState().appendToAssistantMessage(msg.id, "¡Hola");
       getState().appendToAssistantMessage(msg.id, "! ¿Qué tal?");
-      expect(getState().messages[0].content).toBe("¡Hola! ¿Qué tal?");
+      expect((getState().messages[0] as TextMessage).content).toBe(
+        "¡Hola! ¿Qué tal?",
+      );
     });
 
     it("does not modify other messages", () => {
@@ -101,8 +105,8 @@ describe("useChatStore", () => {
       getState().addUserMessage("Hi");
       const assistantMsg = getState().addAssistantMessage();
       getState().appendToAssistantMessage(assistantMsg.id, "Hola");
-      expect(getState().messages[0].content).toBe("Hi");
-      expect(getState().messages[1].content).toBe("Hola");
+      expect((getState().messages[0] as TextMessage).content).toBe("Hi");
+      expect((getState().messages[1] as TextMessage).content).toBe("Hola");
     });
   });
 
@@ -124,6 +128,78 @@ describe("useChatStore", () => {
       expect(getState().error).toBe("Something went wrong");
       getState().setError(null);
       expect(getState().error).toBeNull();
+    });
+  });
+
+  describe("flashcard actions", () => {
+    it("addFlashcardMessage creates a flashcard with correct fields", () => {
+      getState().startSession(null);
+      const msg = getState().addFlashcardMessage({
+        wordId: "w1",
+        word: "hola",
+        prompt: "hello",
+        hint: "greeting",
+      });
+      expect(msg.type).toBe("flashcard");
+      expect(msg.role).toBe("assistant");
+      expect(msg.status).toBe("pending");
+      expect(msg.wordId).toBe("w1");
+      expect(msg.word).toBe("hola");
+      expect(msg.prompt).toBe("hello");
+      expect(msg.hint).toBe("greeting");
+      expect(msg.id).toMatch(/^msg_/);
+      expect(msg.createdAt).toBeInstanceOf(Date);
+    });
+
+    it("addFlashcardMessage appends to messages array", () => {
+      getState().startSession(null, "¡Hola!");
+      getState().addUserMessage("Hi");
+      getState().addFlashcardMessage({
+        wordId: "w1",
+        word: "gato",
+        prompt: "cat",
+      });
+      expect(getState().messages).toHaveLength(3);
+      expect(getState().messages[2].type).toBe("flashcard");
+    });
+
+    it("updateFlashcardStatus sets status to correct and stores userAnswer", () => {
+      getState().startSession(null);
+      const msg = getState().addFlashcardMessage({
+        wordId: "w1",
+        word: "gato",
+        prompt: "cat",
+      });
+      getState().updateFlashcardStatus(msg.id, "correct", "gato");
+      const updated = getState().messages[0] as FlashcardMessage;
+      expect(updated.status).toBe("correct");
+      expect(updated.userAnswer).toBe("gato");
+    });
+
+    it("updateFlashcardStatus sets status to incorrect and stores userAnswer", () => {
+      getState().startSession(null);
+      const msg = getState().addFlashcardMessage({
+        wordId: "w1",
+        word: "gato",
+        prompt: "cat",
+      });
+      getState().updateFlashcardStatus(msg.id, "incorrect", "perro");
+      const updated = getState().messages[0] as FlashcardMessage;
+      expect(updated.status).toBe("incorrect");
+      expect(updated.userAnswer).toBe("perro");
+    });
+
+    it("updateFlashcardStatus does nothing for non-existent messageId", () => {
+      getState().startSession(null);
+      getState().addFlashcardMessage({
+        wordId: "w1",
+        word: "gato",
+        prompt: "cat",
+      });
+      getState().updateFlashcardStatus("non_existent_id", "correct", "gato");
+      const unchanged = getState().messages[0] as FlashcardMessage;
+      expect(unchanged.status).toBe("pending");
+      expect(unchanged.userAnswer).toBeUndefined();
     });
   });
 

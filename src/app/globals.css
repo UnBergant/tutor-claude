@@ -179,6 +179,7 @@
   --animate-fade-in-up: fade-in-up 0.5s ease-out both;
   --animate-scale-in: scale-in 0.3s ease-out both;
   --animate-shimmer: shimmer 1.5s ease-in-out infinite;
+  --animate-pulse-border: pulse-border 2s ease-in-out infinite;
 }
 
 /* Prose table styles — explicit overrides for grammar explanation blocks */
@@ -281,6 +282,16 @@
   }
 }
 
+@keyframes pulse-border {
+  0%,
+  100% {
+    border-color: var(--border);
+  }
+  50% {
+    border-color: var(--primary);
+  }
+}
+
 /* Staggered entrance — add to parent container, children animate in sequence */
 .stagger-fade-in > * {
   animation: fade-in-up 0.5s ease-out both;
@@ -369,7 +380,8 @@
   .animate-fade-in,
   .animate-fade-in-up,
   .animate-scale-in,
-  .animate-shimmer {
+  .animate-shimmer,
+  .animate-pulse-border {
     animation-duration: 0.01ms;
     animation-delay: 0ms;
   }
