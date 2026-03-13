@@ -76,7 +76,9 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           trimmed,
         );
       // Fire-and-forget: persist SRS update on server
-      submitFlashcardAnswer(pendingFlashcard.wordId, correct);
+      submitFlashcardAnswer(pendingFlashcard.wordId, correct).catch(
+        console.error,
+      );
     } else {
       onSend(trimmed);
     }

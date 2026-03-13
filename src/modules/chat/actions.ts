@@ -266,8 +266,8 @@ export async function submitFlashcardAnswer(
     interval: vocabularyWord.interval,
   });
 
-  await prisma.vocabularyWord.update({
-    where: { id: wordId },
+  await prisma.vocabularyWord.updateMany({
+    where: { id: wordId, userId: session.user.id },
     data: {
       repetitions: result.repetitions,
       easeFactor: result.easeFactor,

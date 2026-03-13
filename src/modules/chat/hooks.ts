@@ -155,7 +155,7 @@ export function useChat() {
         translateAssistantMessage(finalMsg.id, finalMsg.content);
       }
 
-      // Fire-and-forget: inject a flashcard if conditions are met
+      // Inject a flashcard if conditions are met (awaited — blocks isStreaming reset)
       try {
         if (shouldInsertFlashcard(useChatStore.getState().messages)) {
           const flashcardWord = await getFlashcardWord();

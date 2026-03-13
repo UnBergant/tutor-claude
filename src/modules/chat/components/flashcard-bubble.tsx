@@ -7,9 +7,10 @@ import type { FlashcardMessage } from "../types";
 // FlashcardBubble — renders an inline vocabulary quiz card in the chat
 // ---------------------------------------------------------------------------
 
-/** Replace all occurrences of `word` in `text` with "___" (case-insensitive). */
+/** Replace all whole-word occurrences of `word` in `text` with "___" (case-insensitive). */
 function redactWord(text: string, word: string): string {
-  const pattern = new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`\\b${escaped}\\b`, "gi");
   return text.replace(pattern, "___");
 }
 
@@ -31,8 +32,8 @@ export function FlashcardBubble({ message }: FlashcardBubbleProps) {
       <div
         className={cn(
           "max-w-[85%] rounded-2xl border px-4 py-3 text-sm sm:max-w-[75%]",
-          status === "correct" && "border-green-500/50 bg-green-50/50",
-          status === "incorrect" && "border-amber-500/50 bg-amber-50/50",
+          status === "correct" && "border-green-500/50 bg-green-500/10",
+          status === "incorrect" && "border-amber-500/50 bg-amber-500/10",
           status === "pending" && "border-border bg-card animate-pulse-border",
         )}
       >
