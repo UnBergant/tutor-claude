@@ -1,5 +1,11 @@
 import { create } from "zustand";
-import type { ChatMessage, FlashcardMessage, TextMessage } from "./types";
+import type {
+  ChatMessage,
+  FlashcardMessage,
+  QuizMessage,
+  QuizQuestion,
+  TextMessage,
+} from "./types";
 
 interface ChatState {
   /** Current session ID (random, for tracking) */
@@ -12,6 +18,8 @@ interface ChatState {
   isStreaming: boolean;
   /** Whether post-session extraction is in progress */
   isExtracting: boolean;
+  /** Whether a quiz tool_use is being streamed */
+  isQuizLoading: boolean;
   /** Error message to display */
   error: string | null;
 
@@ -31,8 +39,19 @@ interface ChatState {
     status: "correct" | "incorrect",
     userAnswer: string,
   ) => void;
+  addQuizMessage: (data: {
+    questions: Array<Omit<QuizQuestion, "status" | "userAnswer">>;
+  }) => QuizMessage;
+  answerQuizQuestion: (
+    messageId: string,
+    questionIndex: number,
+    status: "correct" | "incorrect",
+    userAnswer: string,
+  ) => void;
+  advanceQuiz: (messageId: string) => void;
   setIsStreaming: (v: boolean) => void;
   setIsExtracting: (v: boolean) => void;
+  setIsQuizLoading: (v: boolean) => void;
   setError: (error: string | null) => void;
   reset: () => void;
 }
@@ -43,6 +62,7 @@ const initialState = {
   messages: [] as ChatMessage[],
   isStreaming: false,
   isExtracting: false,
+  isQuizLoading: false,
   error: null as string | null,
 };
 
@@ -140,8 +160,46 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ messages });
   },
 
+  addQuizMessage: (data) => {
+    const message: QuizMessage = {
+      type: "quiz",
+      id: generateMessageId(),
+      role: "assistant",
+      questions: data.questions.map((q) => ({
+        ...q,
+        status: "pending" as const,
+      })),
+      currentIndex: 0,
+      createdAt: new Date(),
+    };
+    set({ messages: [...get().messages, message] });
+    return message;
+  },
+
+  answerQuizQuestion: (messageId, questionIndex, status, userAnswer) => {
+    const messages = get().messages.map((m) => {
+      if (m.id !== messageId || m.type !== "quiz") return m;
+      const questions = m.questions.map((q, i) =>
+        i === questionIndex ? { ...q, status, userAnswer } : q,
+      );
+      return { ...m, questions };
+    });
+    set({ messages });
+  },
+
+  advanceQuiz: (messageId) => {
+    const messages = get().messages.map((m) => {
+      if (m.id !== messageId || m.type !== "quiz") return m;
+      // Allow advancing past last question (to summary screen)
+      const nextIndex = Math.min(m.currentIndex + 1, m.questions.length);
+      return { ...m, currentIndex: nextIndex };
+    });
+    set({ messages });
+  },
+
   setIsStreaming: (isStreaming) => set({ isStreaming }),
   setIsExtracting: (isExtracting) => set({ isExtracting }),
+  setIsQuizLoading: (isQuizLoading) => set({ isQuizLoading }),
   setError: (error) => set({ error }),
   reset: () => set(initialState),
 }));

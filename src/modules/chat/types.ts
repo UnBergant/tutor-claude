@@ -30,8 +30,33 @@ export interface FlashcardMessage extends ChatMessageBase {
   userAnswer?: string;
 }
 
+/** Quiz exercise type — only MC and gap_fill for inline chat quizzes */
+export type QuizExerciseType = "multiple_choice" | "gap_fill";
+
+/** Single question within a quiz carousel */
+export interface QuizQuestion {
+  quizType: QuizExerciseType;
+  question: string;
+  correctAnswer: string;
+  /** MC options (only for multiple_choice) */
+  options?: string[];
+  /** Brief explanation shown after answering */
+  explanation?: string;
+  status: "pending" | "correct" | "incorrect";
+  userAnswer?: string;
+}
+
+/** Inline quiz message — carousel of 1-5 questions */
+export interface QuizMessage extends ChatMessageBase {
+  type: "quiz";
+  role: "assistant";
+  questions: QuizQuestion[];
+  /** Index of the currently displayed question */
+  currentIndex: number;
+}
+
 /** Any chat message (ephemeral — lives only in Zustand store) */
-export type ChatMessage = TextMessage | FlashcardMessage;
+export type ChatMessage = TextMessage | FlashcardMessage | QuizMessage;
 
 /** A predefined conversation scenario */
 export interface Situation {

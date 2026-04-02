@@ -1,3 +1,4 @@
+import type { Tool } from "@anthropic-ai/sdk/resources/messages";
 import { NextResponse } from "next/server";
 import type { ChatRequestBody } from "@/modules/chat/types";
 import { getClient } from "@/shared/lib/ai/client";
@@ -9,6 +10,53 @@ import {
 } from "@/shared/lib/ai/rate-limiter";
 import { auth } from "@/shared/lib/auth";
 import { prisma } from "@/shared/lib/prisma";
+
+const GENERATE_QUIZ_TOOL: Tool = {
+  name: "generate_quiz",
+  description:
+    "Generate a set of 3 inline quiz exercises for the student (carousel)",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      questions: {
+        type: "array",
+        description:
+          "Array of 3 quiz questions. Mix types (MC + gap_fill) for variety.",
+        items: {
+          type: "object",
+          properties: {
+            quiz_type: {
+              type: "string",
+              enum: ["multiple_choice", "gap_fill"],
+              description: "Type of quiz",
+            },
+            question: {
+              type: "string",
+              description: "The question or sentence with ___ for gap",
+            },
+            correct_answer: {
+              type: "string",
+              description: "The correct answer",
+            },
+            options: {
+              type: "array",
+              items: { type: "string" },
+              description: "MC options (4 items, required for multiple_choice)",
+            },
+            explanation: {
+              type: "string",
+              description: "Brief explanation shown after answering",
+            },
+          },
+          required: ["quiz_type", "question", "correct_answer", "explanation"],
+        },
+        minItems: 3,
+        maxItems: 3,
+      },
+    },
+    required: ["questions"],
+  },
+};
 
 const MAX_MESSAGES = 50;
 const MAX_MESSAGE_LENGTH = 2000;
@@ -103,6 +151,7 @@ export async function POST(request: Request) {
     model,
     max_tokens: 1024,
     system: systemPrompt,
+    tools: [GENERATE_QUIZ_TOOL],
     messages: messages.map((m) => ({
       role: m.role as "user" | "assistant",
       content: m.content,

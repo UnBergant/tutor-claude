@@ -2,6 +2,7 @@
 
 import { Send } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { checkAnswer } from "@/shared/lib/exercise/answer-check";
 import { Button } from "@/shared/ui/button";
 import { submitFlashcardAnswer } from "../actions";
 import { useChatStore } from "../store";
@@ -31,6 +32,21 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
       const m = s.messages[i];
       if (m.type === "flashcard" && m.status === "pending") {
         return m as FlashcardMessage;
+      }
+    }
+    return null;
+  });
+
+  // Detect pending gap_fill quiz in carousel (MC quizzes handled inline by QuizBubble)
+  // Returns the QuizMessage directly (stable store reference) to avoid infinite loop
+  const pendingGapFillMsg = useChatStore((s) => {
+    for (let i = s.messages.length - 1; i >= 0; i--) {
+      const m = s.messages[i];
+      if (m.type === "quiz") {
+        const q = m.questions[m.currentIndex];
+        if (q?.quizType === "gap_fill" && q.status === "pending") {
+          return m;
+        }
       }
     }
     return null;
@@ -79,6 +95,18 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
       submitFlashcardAnswer(pendingFlashcard.wordId, correct).catch(
         console.error,
       );
+    } else if (pendingGapFillMsg) {
+      // Check gap_fill answer with accent/typo tolerance
+      const q = pendingGapFillMsg.questions[pendingGapFillMsg.currentIndex];
+      const correct = checkAnswer(trimmed, q.correctAnswer, "gap_fill");
+      useChatStore
+        .getState()
+        .answerQuizQuestion(
+          pendingGapFillMsg.id,
+          pendingGapFillMsg.currentIndex,
+          correct ? "correct" : "incorrect",
+          trimmed,
+        );
     } else {
       onSend(trimmed);
     }
@@ -92,7 +120,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     }
 
     cooldownTimerRef.current = setTimeout(() => setCooldown(false), 1000);
-  }, [value, disabled, cooldown, onSend, pendingFlashcard]);
+  }, [value, disabled, cooldown, onSend, pendingFlashcard, pendingGapFillMsg]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -122,7 +150,9 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           placeholder={
             pendingFlashcard
               ? "Type the Spanish translation..."
-              : "Type in Spanish..."
+              : pendingGapFillMsg
+                ? "Type your answer..."
+                : "Type in Spanish..."
           }
           disabled={disabled}
           maxLength={2000}
