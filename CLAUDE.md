@@ -23,6 +23,17 @@ npm run test     # run unit tests (Vitest)
 npm run test:e2e # run E2E tests (Playwright)
 ```
 
+## Deploy
+
+```bash
+vercel --prod                          # deploy current branch to production (tutor-claude.vercel.app)
+vercel alias set <url> staging-tutor-claude.vercel.app  # update staging with a preview deployment
+```
+
+- **Production:** `tutor-claude.vercel.app` — deploy from master
+- **Staging:** `staging-tutor-claude.vercel.app` — alias any preview deployment to this fixed URL
+- Google OAuth is configured for both URLs
+
 ## Project Overview
 
 **Celestia** — an AI-powered personal Spanish tutor web app. Combines real tutor personalization with interactive Duolingo/Skyeng-style exercises. Spanish from Spain (Castellano), not Latin American. Interface language: English (MVP).

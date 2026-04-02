@@ -15,13 +15,15 @@
 | 4 | [Progress, SRS & Gamification](phase-4-progress.md) | ✅ Done |
 | 5 | [Chat with Celestia](phase-5-chat.md) | ✅ Done |
 | 6 | [Design Polish & Production](phase-6-polish-deploy.md) | ⏳ Pending |
+| 7 | [AI Improvements](phase-7-ai-improvements.md) | ⏳ Pending |
 
 ## Dependencies
 
-Strictly linear — each phase requires the previous one:
+Phases 0–6 are strictly linear. Phase 7 runs independently after Phase 5 (requires chat infrastructure):
 
 ```
 Phase 0 → Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6
+                                                          ↘ Phase 7
 ```
 
 - Phase 1 (Auth/DB/Shell) unlocks all subsequent phases
@@ -30,3 +32,4 @@ Phase 0 → Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6
 - Phase 4 (Progress/SRS) builds on exercise data from Phase 3 — no chat dependency
 - Phase 5 (Chat) reuses AI infrastructure from Phases 2-3, vocabulary auto-collection feeds Phase 4
 - Phase 6 (Polish) finalizes design system and production after all features are validated
+- Phase 7 (AI) builds on chat infrastructure from Phase 5 — independent of Phase 6

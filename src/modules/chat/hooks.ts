@@ -5,35 +5,46 @@ import { useCallback, useEffect, useRef } from "react";
 import { extractChatData, getFlashcardWord, translateMessage } from "./actions";
 import { useChatStore } from "./store";
 import { useTranslationStore } from "./translation-store";
-import type { ChatMessage } from "./types";
+import type { ChatMessage, QuizExerciseType } from "./types";
+
+/** Check if a quiz is still in progress (unanswered questions or summary not yet viewed) */
+function isQuizActive(msg: {
+  questions: { status: string }[];
+  currentIndex: number;
+}): boolean {
+  return msg.currentIndex < msg.questions.length;
+}
 
 /**
  * Determine if it's time to inject a flashcard into the chat.
  *
  * Rules:
  * - At least 4 text messages in session before first flashcard
- * - No pending flashcard already in messages
- * - At least 6 text messages since the last flashcard (3 user + 3 assistant exchanges)
+ * - No pending flashcard or quiz already in messages
+ * - At least 6 text messages since the last flashcard or quiz
+ *   (flashcards and quizzes share the spacing counter to avoid overloading)
  */
 export function shouldInsertFlashcard(messages: ChatMessage[]): boolean {
   const textMessages = messages.filter((m) => m.type === "text");
-  const hasPending = messages.some(
-    (m) => m.type === "flashcard" && m.status === "pending",
-  );
+  const hasPendingExercise = messages.some((m) => {
+    if (m.type === "flashcard") return m.status === "pending";
+    if (m.type === "quiz") return isQuizActive(m);
+    return false;
+  });
 
-  if (hasPending || textMessages.length < 4) return false;
+  if (hasPendingExercise || textMessages.length < 4) return false;
 
-  // Find last flashcard position
-  const lastFlashcardIndex = messages.findLastIndex(
-    (m) => m.type === "flashcard",
+  // Find last flashcard or quiz position (whichever is more recent)
+  const lastExerciseIndex = messages.findLastIndex(
+    (m) => m.type === "flashcard" || m.type === "quiz",
   );
-  const messagesSinceFlashcard =
-    lastFlashcardIndex === -1
+  const messagesSinceExercise =
+    lastExerciseIndex === -1
       ? textMessages.length
-      : messages.slice(lastFlashcardIndex + 1).filter((m) => m.type === "text")
+      : messages.slice(lastExerciseIndex + 1).filter((m) => m.type === "text")
           .length;
 
-  return messagesSinceFlashcard >= 6;
+  return messagesSinceExercise >= 6;
 }
 
 /**
@@ -86,7 +97,7 @@ export function useChat() {
     state.setIsStreaming(true);
     state.setError(null);
 
-    // Prepare messages for API (only text messages — exclude flashcards)
+    // Prepare messages for API (only text messages — exclude flashcards/quizzes)
     const apiMessages = useChatStore
       .getState()
       .messages.filter((m) => m.type === "text")
@@ -144,6 +155,40 @@ export function useChat() {
           .setError("Stream interrupted. Please try again.");
       });
 
+      // Show quiz loading skeleton when tool input starts streaming
+      let quizLoadingSet = false;
+      stream.on("inputJson", () => {
+        if (!quizLoadingSet) {
+          quizLoadingSet = true;
+          useChatStore.getState().setIsQuizLoading(true);
+        }
+      });
+
+      // Detect tool_use blocks for inline quizzes (carousel of questions)
+      stream.on("contentBlock", (block) => {
+        if (block.type === "tool_use" && block.name === "generate_quiz") {
+          useChatStore.getState().setIsQuizLoading(false);
+          const input = block.input as {
+            questions: Array<{
+              quiz_type: QuizExerciseType;
+              question: string;
+              correct_answer: string;
+              options?: string[];
+              explanation?: string;
+            }>;
+          };
+          useChatStore.getState().addQuizMessage({
+            questions: input.questions.map((q) => ({
+              quizType: q.quiz_type,
+              question: q.question,
+              correctAnswer: q.correct_answer,
+              options: q.options,
+              explanation: q.explanation,
+            })),
+          });
+        }
+      });
+
       await stream.done();
 
       // Fire-and-forget: translate the completed assistant message
@@ -179,6 +224,7 @@ export function useChat() {
         .setError((error as Error).message || "Something went wrong");
     } finally {
       useChatStore.getState().setIsStreaming(false);
+      useChatStore.getState().setIsQuizLoading(false);
       abortRef.current = null;
     }
   }, []);

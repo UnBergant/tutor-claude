@@ -95,6 +95,22 @@ celestia/
 | Neon / Vercel Postgres | PostgreSQL | Free tier |
 | Anthropic | Claude API | Pay-per-use |
 
+### Deployment Environments
+
+| Environment | URL | Branch | Deploy method |
+|---|---|---|---|
+| Production | `tutor-claude.vercel.app` | master | `vercel --prod` |
+| Staging | `staging-tutor-claude.vercel.app` | any feature branch | `vercel alias set <preview-url> staging-tutor-claude.vercel.app` |
+
+**Staging workflow:**
+1. Push feature branch → Vercel creates preview deployment with hash URL
+2. Run `vercel alias set <preview-url> staging-tutor-claude.vercel.app` to update staging
+3. Staging URL is fixed — Google OAuth redirect URI configured for it
+
+**Google OAuth redirect URIs:**
+- `https://tutor-claude.vercel.app/api/auth/callback/google` (production)
+- `https://staging-tutor-claude.vercel.app/api/auth/callback/google` (staging)
+
 ## Key Technical Decisions
 
 - **Single Next.js project over Turborepo monorepo** — Server Actions + Route Handlers eliminate the need for a separate backend; simpler deployment, less boilerplate

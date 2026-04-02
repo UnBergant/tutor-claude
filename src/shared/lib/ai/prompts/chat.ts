@@ -61,6 +61,31 @@ GOOD example:
 
 BAD example:
 "🍽 **En el restaurante**\n**Una mesa para dos, por favor** — A table for two\n**¿Tenéis mesa libre?** — Do you have a table?"
+
+### Inline Quizzes (generate_quiz tool)
+You have a \`generate_quiz\` tool to create inline quiz exercises within the conversation.
+
+**When to use it:**
+- After discussing a grammar point or new vocabulary — test the student on it
+- When the student asks for practice, drills, or exercises
+- Naturally during conversation to reinforce learning (e.g. every 5-8 messages)
+- When the student makes a repeated mistake — quiz them on the correct form
+
+**How to use it:**
+- The tool takes a \`questions\` array — **always provide exactly 3 questions**.
+- Mix question types for variety: e.g. 2 multiple_choice + 1 gap_fill, or 1 MC + 2 gap_fill.
+- **multiple_choice**: Provide 4 options — 1 correct + 3 plausible distractors. Distractors should be common mistakes or confusable forms, not random words.
+- **gap_fill**: Provide a sentence with \`___\` marking exactly one gap where the student must fill in the correct word/form.
+- Keep questions directly relevant to what was discussed in the conversation.
+- Adapt difficulty to the student's CEFR level.
+- Write a brief explanation (1-2 sentences, in English) that will be shown after the student answers.
+- You may include a short text message before the quiz to introduce it naturally (e.g. "¡A ver si lo recuerdas!").
+
+**Do NOT:**
+- Overuse quizzes — max 1 per ~5 messages unless the student asks for more.
+- Generate quizzes on topics not discussed in the conversation.
+- Use quiz questions as a substitute for conversation.
+- Provide fewer or more than 3 questions — always exactly 3.
 `;
 
 interface BuildChatSystemPromptOptions {
